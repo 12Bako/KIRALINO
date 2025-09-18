@@ -6,42 +6,41 @@
     <meta name="theme-color" content="#0b1220" />
     <title>KIRALINO — Premium Car Rentals</title>
     <meta name="description" content="Premium‑Mietwagen via Reisebüro. Verfügbarkeit & Angebot per WhatsApp — Optionen auf Anfrage." />
-    <!-- Tailwind (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React 18 UMD -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for in‑browser JSX transform (simple, no build) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
       html,body{background:#0b1220}
-      /* Prevent iOS zoom on inputs */
       input, select, textarea { font-size: 16px; }
-      /* Tap highlight nicer */
       * { -webkit-tap-highlight-color: rgba(255,255,255,0.1); }
+      .balance{ text-wrap: balance; }
+      .no-scrollbar::-webkit-scrollbar{ display:none }
+      .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none }
     </style>
   </head>
   <body class="min-h-screen">
     <div id="root"></div>
 
     <script type="text/babel">
-      const { useState } = React;
+      const { useState, useMemo } = React;
 
       const WA_NUMBER = "+905537115022";
-      const WA_LINK = `https://wa.me/${WA_NUMBER.replace(/[^\\d+]/g, "")}`;
+      // Keep only digits and leading + for WhatsApp deep link
+      const WA_LINK = "https://wa.me/" + WA_NUMBER.replace(/[^\d+]/g, "");
 
       const LANGS = [
-        { code: "tr", label: "🇹🇷 Türkçe" },
-        { code: "de", label: "🇩🇪 Deutsch" },
-        { code: "en", label: "🇬🇧 English" },
-        { code: "ar", label: "🇸🇦 العربية" },
+        { code: "tr", label: "🇹🇷 Türkçe", short:"🇹🇷" },
+        { code: "de", label: "🇩🇪 Deutsch", short:"🇩🇪" },
+        { code: "en", label: "🇬🇧 English", short:"🇬🇧" },
+        { code: "ar", label: "🇸🇦 العربية", short:"🇸🇦" },
       ];
 
       const t = {
-        tr: { brand:"KIRALINO", tagline:"Premium araç kiralama — seyahat acentesi aracılığı", heroSub:"Avrupa genelinde premium sınıflar. Fiyat ve uygunluk WhatsApp ile — seçenekler talep üzerine.", nav:{book:"Rezervasyon",fleet:"Kategoriler",how:"Aşamalar",contact:"İletişim"}, ctaPrimary:"WhatsApp’tan yazın", ctaSecondary:"Kategorileri gör", featuresTitle:"Neden Kiralino?", features:[ {title:"Premium odak", text:"Sadece kaliteli ve bakımlı araçlar; doğru sınıfı sizin için eşleştiriyoruz."}, {title:"Tek noktadan hizmet", text:"Talep → teklif → onay → voucher: hepsi bizden, teslim/iade sağlayıcıda."}, {title:"Ekstralar isteğe bağlı", text:"Premium koruma, çocuk koltuğu, dizel garantisi, 2. sürücü, sınır geçişi — talep üzerine."} ], fleetTitle:"Kategoriler (örnek: model — sınıf {orSimilar})", orSimilar:"veya benzeri", categories:[ {code:"mini",name:"Mini",sample:"Fiat 500"},{code:"economy",name:"Ekonomi",sample:"Seat Ibiza"},{code:"compact",name:"Kompakt",sample:"VW T‑Roc"},{code:"intermediate",name:"Orta",sample:"Audi A4"},{code:"standard",name:"Standart",sample:"VW Passat"},{code:"fullsize",name:"Full‑Size",sample:"BMW 5 Serisi"},{code:"suv_compact",name:"Kompakt SUV",sample:"Audi Q3"},{code:"suv_fullsize",name:"Büyük SUV",sample:"BMW X5"},{code:"estate",name:"Station/Kombi",sample:"Audi A4 Avant"},{code:"van",name:"Van 7–9",sample:"Mercedes V‑Class"},{code:"convertible",name:"Cabrio",sample:"BMW 4 Cabrio"},{code:"electric",name:"Elektrik",sample:"Mercedes EQE"} ], howTitle:"Nasıl çalışır?", steps:[ {title:"Talebinizi iletin", text:"Tarih, istasyon, sınıf, notlar — WhatsApp veya form."}, {title:"Uygunluk eşleştirme", text:"Partner ağında en iyi seçeneği bulup teklifi gönderiyoruz."}, {title:"Onay & voucher", text:"Onay sonrası sağlayıcıya rezervasyon; teslim/iade sağlayıcıda."} ], faqTitle:"Sık sorulanlar", thankTitle:"Talebinizi aldık!", thankDesc:"Kısa sürede WhatsApp’tan dönüş yapacağız.", reviewsTitle:"Müşteri yorumları", contactTitle:"WhatsApp’tan yazın", footer:"© Kiralino — Premium araç kiralama aracılığı" },
-        de: { brand:"KIRALINO", tagline:"Premium‑Mietwagen — Reisebüro‑Vermittlung", heroSub:"Europaweit Premium‑Klassen. Verfügbarkeit & Preis per WhatsApp — Optionen auf Anfrage.", nav:{book:"Buchung",fleet:"Kategorien",how:"Ablauf",contact:"Kontakt"}, ctaPrimary:"Auf WhatsApp schreiben", ctaSecondary:"Kategorien ansehen", featuresTitle:"Warum Kiralino?", features:[ {title:"Premium‑Fokus", text:"Nur gepflegte, wertige Fahrzeuge; wir matchen die passende Klasse."}, {title:"Alles aus einer Hand", text:"Anfrage → Angebot → Bestätigung → Voucher; Übergabe/Rückgabe beim Anbieter."}, {title:"Extras auf Anfrage", text:"Premium‑Schutz, Kindersitz, Diesel‑Garantie, 2. Fahrer, Grenzübertritt — auf Anfrage."}], fleetTitle:"Kategorien (Beispiel: Modell — Klasse {orSimilar})", orSimilar:"oder ähnlich", categories:[ {code:"mini",name:"Kleinstwagen",sample:"Fiat 500"},{code:"economy",name:"Kleinwagen (Economy)",sample:"Seat Ibiza"},{code:"compact",name:"Kompaktklasse",sample:"VW T‑Roc"},{code:"intermediate",name:"Mittelklasse",sample:"Audi A4"},{code:"standard",name:"Obere Mittelklasse",sample:"VW Passat"},{code:"fullsize",name:"Full‑Size/Executive",sample:"BMW 5er"},{code:"suv_compact",name:"Kompakt‑SUV",sample:"Audi Q3"},{code:"suv_fullsize",name:"Full‑Size‑SUV",sample:"BMW X5"},{code:"estate",name:"Kombi/Station",sample:"Audi A4 Avant"},{code:"van",name:"Van 7–9",sample:"Mercedes V‑Klasse"},{code:"convertible",name:"Cabrio",sample:"BMW 4er Cabrio"},{code:"electric",name:"Elektrisch",sample:"Mercedes EQE"}], howTitle:"So funktioniert’s", steps:[ {title:"Details senden", text:"Zeitraum, Station, Klasse, Notizen — via WhatsApp oder Formular."}, {title:"Matching", text:"Wir finden im Partnernetz die beste Option und schicken das Angebot."}, {title:"Bestätigung & Voucher", text:"Nach OK buchen wir beim Anbieter; Übergabe/Retour beim Anbieter."}], faqTitle:"FAQ", thankTitle:"Anfrage erhalten!", thankDesc:"Wir melden uns in Kürze per WhatsApp.", reviewsTitle:"Kundenstimmen", contactTitle:"Jetzt per WhatsApp schreiben", footer:"© Kiralino — Vermittlung Premium‑Mietwagen" },
-        en: { brand:"KIRALINO", tagline:"Premium car rentals — Travel agency brokerage", heroSub:"Premium classes across Europe. Availability & quote via WhatsApp — options on request.", nav:{book:"Booking",fleet:"Categories",how:"Process",contact:"Contact"}, ctaPrimary:"Message on WhatsApp", ctaSecondary:"Browse categories", featuresTitle:"Why Kiralino?", features:[ {title:"Premium only", text:"Curated, well‑maintained vehicles; we match the right class for your trip."}, {title:"End‑to‑end service", text:"Request → quote → confirm → voucher; pickup/return handled by supplier."}, {title:"Extras on request", text:"Premium protection, child seats, diesel guarantee, 2nd driver, cross‑border — on request."}], fleetTitle:"Categories (example: model — class {orSimilar})", orSimilar:"or similar", categories:[ {code:"mini",name:"Mini",sample:"Fiat 500"},{code:"economy",name:"Economy",sample:"Seat Ibiza"},{code:"compact",name:"Compact",sample:"VW T‑Roc"},{code:"intermediate",name:"Intermediate",sample:"Audi A4"},{code:"standard",name:"Standard",sample:"VW Passat"},{code:"fullsize",name:"Full‑Size/Executive",sample:"BMW 5 Series"},{code:"suv_compact",name:"Compact SUV",sample:"Audi Q3"},{code:"suv_fullsize",name:"Full‑Size SUV",sample:"BMW X5"},{code:"estate",name:"Estate/Wagon",sample:"Audi A4 Avant"},{code:"van",name:"Van 7–9",sample:"Mercedes V‑Class"},{code:"convertible",name:"Convertible",sample:"BMW 4 Series Cabrio"},{code:"electric",name:"Electric",sample:"Mercedes EQE"}], howTitle:"How it works", steps:[ {title:"Send your request", text:"Dates, station, class, notes — via WhatsApp or form."}, {title:"We match options", text:"We search our partner network and send the best fit for approval."}, {title:"Confirm & voucher", text:"After your OK we reserve with the supplier; pickup/return handled by them."}], faqTitle:"FAQ", thankTitle:"Request received!", thankDesc:"We’ll get back to you shortly on WhatsApp.", reviewsTitle:"What customers say", contactTitle:"Message us on WhatsApp", footer:"© Kiralino — Premium brokerage" },
-        ar: { brand:"KIRALINO", tagline:"تأجير سيارات فاخرة — وكالة سفر وسيطة", heroSub:"فئات فاخرة في كل أوروبا. التسعير عبر واتساب — خيارات عند الطلب.", nav:{book:"حجز",fleet:"الفئات",how:"الخطوات",contact:"تواصل"}, ctaPrimary:"راسلنا على واتساب", ctaSecondary:"تصفّح الفئات", featuresTitle:"لماذا كيرالينو؟", features:[ {title:"فئة فاخرة فقط", text:"أسطول منتقى بعناية؛ نطابق الفئة المناسبة لرحلتك."}, {title:"خدمة متكاملة", text:"طلب → عرض → تأكيد → قسيمة؛ الاستلام/التسليم لدى المورّد."}, {title:"إضافات عند الطلب", text:"حماية مميزة، مقاعد أطفال، ديزل مضمون، سائق ثانٍ، عبور حدود."}], fleetTitle:"الفئات (مثال: موديل — الفئة {orSimilar})", orSimilar:"أو ما شابه", categories:[ {code:"mini",name:"ميني",sample:"فيات 500"},{code:"economy",name:"اقتصادي",sample:"سيات إيبيزا"},{code:"compact",name:"كومباكت",sample:"فولكس فاجن T‑Roc"},{code:"intermediate",name:"متوسط",sample:"أودي A4"},{code:"standard",name:"ستاندارد",sample:"فولكس فاجن باسات"},{code:"fullsize",name:"فل سايز / تنفيذي",sample:"بي إم دبليو الفئة الخامسة"},{code:"suv_compact",name:"SUV مدمج",sample:"أودي Q3"},{code:"suv_fullsize",name:"SUV كبير",sample:"بي إم دبليو X5"},{code:"estate",name:"ستيشن/واجِن",sample:"أودي A4 أفانت"},{code:"van",name:"فان 7–9",sample:"مرسيدس V‑Class"},{code:"convertible",name:"كابريو",sample:"بي إم دبليو الفئة 4 المكشوفة"},{code:"electric",name:"كهربائي",sample:"مرسيدس EQE"}], howTitle:"كيف تعمل؟", steps:[ {title:"أرسل التفاصيل", text:"تواريخ، المحطة، الفئة، ملاحظات — عبر واتساب أو النموذج."}, {title:"مطابقة الخيارات", text:"نبحث في شبكة شركائنا عن الخيار الأنسب ونرسله للموافقة."}, {title:"تأكيد وقسيمة", text:"بعد الموافقة نحجز لدى المورّد؛ الاستلام/التسليم عنده."}], faqTitle:"الأسئلة الشائعة", thankTitle:"تم استلام الطلب!", thankDesc:"سنتواصل معكم قريبًا عبر واتساب.", reviewsTitle:"آراء العملاء", contactTitle:"راسِلنا عبر واتساب", footer:"© كيرالينو — وساطة تأجير سيارات فاخرة" }
+        tr: { brand:"KIRALINO", tagline:"Premium araç kiralama — seyahat acentesi aracılığı", heroSub:"Avrupa genelinde premium sınıflar, her şey dahil paket (Premium koruma dâhil). Fiyat ve uygunluk WhatsApp ile — ek seçenekler talep üzerine.", nav:{book:"Rezervasyon",fleet:"Kategoriler",how:"Aşamalar",contact:"İletişim"}, ctaPrimary:"WhatsApp’tan yazın", ctaSecondary:"Kategorileri gör", featuresTitle:"Neden Kiralino?", features:[ {title:"Premium odak", text:"Sadece kaliteli ve bakımlı araçlar; doğru sınıfı sizin için eşleştiriyoruz."}, {title:"Tek noktadan hizmet", text:"Talep → teklif → onay → voucher: hepsi bizden, teslim/iade sağlayıcıda."}, {title:"Her şey dahil", text:"Premium koruma dahil; diğer ekstralar (çocuk koltuğu, dizel garantisi, 2. sürücü, sınır geçişi) talep üzerine."} ], fleetTitle:"Kategoriler (örnek: model — sınıf {orSimilar})", orSimilar:"veya benzeri", categories:[ {code:"mini",name:"Mini",sample:"Fiat 500"},{code:"economy",name:"Ekonomi",sample:"Seat Ibiza"},{code:"compact",name:"Kompakt",sample:"VW T‑Roc"},{code:"intermediate",name:"Orta",sample:"Audi A4"},{code:"standard",name:"Standart",sample:"VW Passat"},{code:"fullsize",name:"Full‑Size",sample:"BMW 5 Serisi"},{code:"suv_compact",name:"Kompakt SUV",sample:"Audi Q3"},{code:"suv_fullsize",name:"Büyük SUV",sample:"BMW X5"},{code:"estate",name:"Station/Kombi",sample:"Audi A4 Avant"},{code:"van",name:"Van 7–9",sample:"Mercedes V‑Class"},{code:"convertible",name:"Cabrio",sample:"BMW 4 Cabrio"},{code:"electric",name:"Elektrik",sample:"Mercedes EQE"} ], howTitle:"Nasıl çalışır?", steps:[ {title:"Talebinizi iletin", text:"Tarih, istasyon, sınıf, notlar — WhatsApp veya form."}, {title:"Uygunluk eşleştirme", text:"Partner ağında en iyi seçeneği bulup teklifi gönderiyoruz."}, {title:"Onay & voucher", text:"Onay sonrası sağlayıcıya rezervasyon; teslim/iade sağlayıcıda."} ], faqTitle:"Sık sorulanlar", thankTitle:"Talebinizi aldık!", thankDesc:"Kısa sürede WhatsApp’tan dönüş yapacağız.", reviewsTitle:"Müşteri yorumları", contactTitle:"WhatsApp’tan yazın", footer:"© Kiralino — Premium araç kiralama aracılığı" },
+        de: { brand:"KIRALINO", tagline:"Premium‑Mietwagen — Reisebüro‑Vermittlung", heroSub:"Europaweit Premium‑Klassen mit All‑Inclusive‑Paket (Premium‑Schutz inklusive). Verfügbarkeit & Preis per WhatsApp — weitere Optionen auf Anfrage.", nav:{book:"Buchung",fleet:"Kategorien",how:"Ablauf",contact:"Kontakt"}, ctaPrimary:"Auf WhatsApp schreiben", ctaSecondary:"Kategorien ansehen", featuresTitle:"Warum Kiralino?", features:[ {title:"Premium‑Fokus", text:"Nur gepflegte, wertige Fahrzeuge; wir matchen die passende Klasse."}, {title:"Alles aus einer Hand", text:"Anfrage → Angebot → Bestätigung → Voucher; Übergabe/Rückgabe beim Anbieter."}, {title:"All‑Inclusive", text:"Premium‑Schutz inklusive; weitere Extras (Kindersitz, Diesel‑Garantie, 2. Fahrer, Grenzübertritt) auf Anfrage."}], fleetTitle:"Kategorien (Beispiel: Modell — Klasse {orSimilar})", orSimilar:"oder ähnlich", categories:[ {code:"mini",name:"Kleinstwagen",sample:"Fiat 500"},{code:"economy",name:"Kleinwagen (Economy)",sample:"Seat Ibiza"},{code:"compact",name:"Kompaktklasse",sample:"VW T‑Roc"},{code:"intermediate",name:"Mittelklasse",sample:"Audi A4"},{code:"standard",name:"Obere Mittelklasse",sample:"VW Passat"},{code:"fullsize",name:"Full‑Size/Executive",sample:"BMW 5er"},{code:"suv_compact",name:"Kompakt‑SUV",sample:"Audi Q3"},{code:"suv_fullsize",name:"Full‑Size‑SUV",sample:"BMW X5"},{code:"estate",name:"Kombi/Station",sample:"Audi A4 Avant"},{code:"van",name:"Van 7–9",sample:"Mercedes V‑Klasse"},{code:"convertible",name:"Cabrio",sample:"BMW 4er Cabrio"},{code:"electric",name:"Elektrisch",sample:"Mercedes EQE"}], howTitle:"So funktioniert’s", steps:[ {title:"Details senden", text:"Zeitraum, Station, Klasse, Notizen — via WhatsApp oder Formular."}, {title:"Matching", text:"Wir finden im Partnernetz die beste Option und schicken das Angebot."}, {title:"Bestätigung & Voucher", text:"Nach OK buchen wir beim Anbieter; Übergabe/Retour beim Anbieter."}], faqTitle:"FAQ", thankTitle:"Anfrage erhalten!", thankDesc:"Wir melden uns in Kürze per WhatsApp.", reviewsTitle:"Kundenstimmen", contactTitle:"Jetzt per WhatsApp schreiben", footer:"© Kiralino — Vermittlung Premium‑Mietwagen" },
+        en: { brand:"KIRALINO", tagline:"Premium car rentals — Travel agency brokerage", heroSub:"Premium classes across Europe with an all‑inclusive package (premium protection included). Availability & quote via WhatsApp — further options on request.", nav:{book:"Booking",fleet:"Categories",how:"Process",contact:"Contact"}, ctaPrimary:"Message on WhatsApp", ctaSecondary:"Browse categories", featuresTitle:"Why Kiralino?", features:[ {title:"Premium only", text:"Curated, well‑maintained vehicles; we match the right class for your trip."}, {title:"End‑to‑end service", text:"Request → quote → confirm → voucher; pickup/return handled by supplier."}, {title:"All‑inclusive", text:"Premium protection included; other extras (child seat, diesel guarantee, 2nd driver, cross‑border) on request."}], fleetTitle:"Categories (example: model — class {orSimilar})", orSimilar:"or similar", categories:[ {code:"mini",name:"Mini",sample:"Fiat 500"},{code:"economy",name:"Economy",sample:"Seat Ibiza"},{code:"compact",name:"Compact",sample:"VW T‑Roc"},{code:"intermediate",name:"Intermediate",sample:"Audi A4"},{code:"standard",name:"Standard",sample:"VW Passat"},{code:"fullsize",name:"Full‑Size/Executive",sample:"BMW 5 Series"},{code:"suv_compact",name:"Compact SUV",sample:"Audi Q3"},{code:"suv_fullsize",name:"Full‑Size SUV",sample:"BMW X5"},{code:"estate",name:"Estate/Wagon",sample:"Audi A4 Avant"},{code:"van",name:"Van 7–9",sample:"Mercedes V‑Class"},{code:"convertible",name:"Convertible",sample:"BMW 4 Series Cabrio"},{code:"electric",name:"Electric",sample:"Mercedes EQE"}], howTitle:"How it works", steps:[ {title:"Send your request", text:"Dates, station, class, notes — via WhatsApp or form."}, {title:"We match options", text:"We search our partner network and send the best fit for approval."}, {title:"Confirm & voucher", text:"After your OK we reserve with the supplier; pickup/return handled by them."}], faqTitle:"FAQ", thankTitle:"Request received!", thankDesc:"We’ll get back to you shortly on WhatsApp.", reviewsTitle:"What customers say", contactTitle:"Message us on WhatsApp", footer:"© Kiralino — Premium brokerage" },
+        ar: { brand:"KIRALINO", tagline:"تأجير سيارات فاخرة — وكالة سفر وسيطة", heroSub:"فئات فاخرة في كل أوروبا مع باقة شاملة (تشمل الحماية المميزة). التسعير عبر واتساب — خيارات إضافية عند الطلب.", nav:{book:"حجز",fleet:"الفئات",how:"الخطوات",contact:"تواصل"}, ctaPrimary:"راسلنا على واتساب", ctaSecondary:"تصفّح الفئات", featuresTitle:"لماذا كيرالينو؟", features:[ {title:"فئة فاخرة فقط", text:"أسطول منتقى بعناية؛ نطابق الفئة المناسبة لرحلتك."}, {title:"خدمة متكاملة", text:"طلب → عرض → تأكيد → قسيمة؛ الاستلام/التسليم لدى المورّد."}, {title:"كلّ شامل", text:"تشمل الحماية المميزة؛ إضافات أخرى (مقعد أطفال، ضمان الديزل، سائق ثانٍ، عبور حدود) عند الطلب."}], fleetTitle:"الفئات (مثال: موديل — الفئة {orSimilar})", orSimilar:"أو ما شابه", categories:[ {code:"mini",name:"ميني",sample:"فيات 500"},{code:"economy",name:"اقتصادي",sample:"سيات إيبيزا"},{code:"compact",name:"كومباكت",sample:"فولكس فاجن T‑Roc"},{code:"intermediate",name:"متوسط",sample:"أودي A4"},{code:"standard",name:"ستاندارد",sample:"فولكس فاجن باسات"},{code:"fullsize",name:"فل سايز / تنفيذي",sample:"بي إم دبليو الفئة الخامسة"},{code:"suv_compact",name:"SUV مدمج",sample:"أودي Q3"},{code:"suv_fullsize",name:"SUV كبير",sample:"بي إم دبليو X5"},{code:"estate",name:"ستيشن/واجِن",sample:"أودي A4 أفانت"},{code:"van",name:"فان 7–9",sample:"مرسيدس V‑Class"},{code:"convertible",name:"كابريو",sample:"بي إم دبليو الفئة 4 المكشوفة"},{code:"electric",name:"كهربائي",sample:"مرسيدس EQE"}], howTitle:"كيف تعمل؟", steps:[ {title:"أرسل التفاصيل", text:"تواريخ، المحطة، الفئة، ملاحظات — عبر واتساب أو النموذج."}, {title:"مطابقة الخيارات", text:"نبحث في شبكة شركائنا عن الخيار الأنسب ونرسله للموافقة."}, {title:"تأكيد وقسيمة", text:"بعد الموافقة نحجز لدى المورّد؛ الاستلام/التسليم عنده."}], faqTitle:"الأسئلة الشائعة", thankTitle:"تم استلام الطلب!", thankDesc:"سنتواصل معكم قريبًا عبر واتساب.", reviewsTitle:"آراء العملاء", contactTitle:"راسِلنا عبر واتساب", footer:"© كيرالينو — وساطة تأجير سيارات فاخرة" }
       };
 
       function cls(...c){return c.filter(Boolean).join(" ");}
@@ -72,12 +71,12 @@
 
       function extrasLine(lang){
         return lang==='de'
-          ? 'Extras auf Anfrage: Premium‑Schutz, Kindersitz, Diesel‑Garantie, 2. Fahrer, Grenzübertritt.'
+          ? 'All‑Inclusive: Premium‑Schutz inklusive. Weitere Extras auf Anfrage: Kindersitz, Diesel‑Garantie, 2. Fahrer, Grenzübertritt.'
           : lang==='tr'
-          ? 'Ekstralar talep üzerine: Premium koruma, çocuk koltuğu, dizel garantisi, 2. sürücü, sınır geçişi.'
+          ? 'Her şey dahil: Premium koruma dâhildir. Diğer ekstralar talep üzerine: çocuk koltuğu, dizel garantisi, 2. sürücü, sınır geçişi.'
           : lang==='ar'
-          ? 'إضافات عند الطلب: حماية مميزة، مقعد أطفال، ديزل مضمون، سائق ثانٍ، عبور حدود.'
-          : 'Extras on request: premium protection, child seat, diesel guarantee, 2nd driver, cross‑border.';
+          ? 'كلّ شامل: حماية مميزة مُتضمنة. إضافات أخرى عند الطلب: مقعد أطفال، ضمان الديزل، سائق ثانٍ، عبور حدود.'
+          : 'All‑inclusive: premium protection included. Other extras on request: child seat, diesel guarantee, 2nd driver, cross‑border.';
       }
 
       function CategoryGrid({dict, lang}){
@@ -104,40 +103,57 @@
         );
       }
 
-      function buildBookingMessage(form, lang){
-        return [
-          '🆕 New booking request',
-          `Lang: ${lang?.toUpperCase?.() || ''}`,
-          `Name: ${form.name || '-'}`,
-          `WhatsApp: ${form.phone || '-'}`,
-          `Route: ${form.pickup || '-'} → ${form.dropoff || '-'}`,
-          `Pickup: ${form.pickDate || '-'} ${form.pickTime || ''}`,
-          `Dropoff: ${form.dropDate || '-'} ${form.dropTime || ''}`,
-          `Category: ${form.category || '-'}`,
-          `Notes: ${form.notes || '-'}`,
-        ].join('\n');
-      }
+      // Helpers for validation
+      function parseDT(date, time){ if(!date) return null; const t = time || '00:00'; const d=new Date(`${date}T${t}`); return isNaN(+d)?null:d; }
 
       function BookingForm({ dict, lang }){
         const [submitted, setSubmitted] = useState(false);
         const [sending, setSending] = useState(false);
         const [form, setForm] = useState({ name: "", phone: "", pickup: "", dropoff: "", pickDate: "", pickTime: "", dropDate: "", dropTime: "", category: "", notes: "" });
         const on = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+        const sameDay = useMemo(()=> form.pickDate && form.dropDate && form.pickDate===form.dropDate, [form.pickDate, form.dropDate]);
+
         async function onSubmit(e){
           e.preventDefault();
-          if(!form.name || !form.phone || !form.pickup || !form.pickDate || !form.dropDate){ alert(lang==='de'?'Bitte Pflichtfelder ausfüllen.':lang==='tr'?'Lütfen zorunlu alanları doldurun.':lang==='ar'?'يرجى تعبئة الحقول المطلوبة.':'Please fill required fields.'); return; }
+          // Required fields: all except notes
+          const requiredKeys = ['name','phone','pickup','dropoff','pickDate','pickTime','dropDate','dropTime','category'];
+          for(const k of requiredKeys){ if(!form[k]){ alert(lang==='de'?'Bitte alle Pflichtfelder ausfüllen.':lang==='tr'?'Lütfen tüm zorunlu alanları doldurun.':lang==='ar'?'يرجى تعبئة جميع الحقول المطلوبة.':'Please fill all required fields.'); return; } }
+          // Date order validation
+          const start = parseDT(form.pickDate, form.pickTime);
+          const end   = parseDT(form.dropDate, form.dropTime);
+          if(!start || !end || end <= start){
+            alert(
+              lang==='de' ? 'Rückgabe muss nach der Abholung liegen.' :
+              lang==='tr' ? 'Teslim tarihi/saatı, alıştan sonra olmalı.' :
+              lang==='ar' ? 'وقت/تاريخ التسليم يجب أن يكون بعد الاستلام.' :
+              'Drop-off must be after pick-up.'
+            );
+            return;
+          }
           setSending(true);
           try{
-            const msg = buildBookingMessage(form, lang);
+            const msg = [
+              '🆕 New booking request',
+              `Lang: ${lang.toUpperCase()}`,
+              `Name: ${form.name}`,
+              `WhatsApp: ${form.phone}`,
+              `Route: ${form.pickup} → ${form.dropoff}`,
+              `Pickup: ${form.pickDate} ${form.pickTime}`,
+              `Dropoff: ${form.dropDate} ${form.dropTime}`,
+              `Category: ${form.category}`,
+              `Notes: ${form.notes || '-'}`,
+            ].join('\n');
             console.log('Payload for WhatsApp:', { to: WA_NUMBER, message: msg, lang, fields: form });
             setSubmitted(true);
             setForm({ name: "", phone: "", pickup: "", dropoff: "", pickDate: "", pickTime: "", dropDate: "", dropTime: "", category: "", notes: "" });
           } catch(err){ console.error(err); alert(lang==='de'?'Fehler beim Senden.':lang==='tr'?'Gönderim hatası.':lang==='ar'?'فشل الإرسال.':'Failed to send.'); }
           finally{ setSending(false); }
         }
+
         if (submitted){
           return (
-            <div className="rounded-3xl bg-slate-900/70 border border-white/10 p-8 text-center">
+            <div className="rounded-3xl bg-slate-900/70 border border-white/10 p-8 text-center mb-24">
               <h3 className="text-2xl font-bold mb-2">{dict.thankTitle || 'Danke!'}</h3>
               <p className="text-white/70 mb-6">{dict.thankDesc || 'We will contact you shortly.'}</p>
               <div className="flex items-center justify-center gap-3">
@@ -147,30 +163,37 @@
             </div>
           );
         }
+
         const labels = {
           tr:{name:'Ad Soyad',phone:'WhatsApp numarası',pickup:'Alış konumu',dropoff:'Teslim konumu',pickDate:'Alış tarihi',pickTime:'Alış saati',dropDate:'Teslim tarihi',dropTime:'Teslim saati',category:'Kategori',notes:'Notlar (araç tercihi/uçuş no)',submit:'Gönder'},
           de:{name:'Name',phone:'WhatsApp-Nummer',pickup:'Abholort',dropoff:'Rückgabeort',pickDate:'Abholdatum',pickTime:'Abholzeit',dropDate:'Rückgabedatum',dropTime:'Rückgabezeit',category:'Kategorie',notes:'Notizen (Fahrzeugwunsch/Flugnr.)',submit:'Senden'},
           en:{name:'Full name',phone:'WhatsApp number',pickup:'Pick-up location',dropoff:'Drop-off location',pickDate:'Pick-up date',pickTime:'Pick-up time',dropDate:'Drop-off date',dropTime:'Drop-off time',category:'Category',notes:'Notes (car pref./flight no.)',submit:'Send'},
           ar:{name:'الاسم الكامل',phone:'رقم واتساب',pickup:'موقع الاستلام',dropoff:'موقع التسليم',pickDate:'تاريخ الاستلام',pickTime:'وقت الاستلام',dropDate:'تاريخ التسليم',dropTime:'وقت التسليم',category:'الفئة',notes:'ملاحظات (تفضيل/رقم الرحلة)',submit:'إرسال'}
         }[lang] || {};
+
+        const labelCls = "text-sm text-white/70 mb-1";
+        const boxCls = "bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full";
+
         return (
-          <form onSubmit={onSubmit} className="rounded-3xl bg-slate-900/70 border border-white/10 p-6 md:p-8">
+          <form onSubmit={onSubmit} className="rounded-3xl bg-slate-900/70 border border-white/10 p-6 md:p-8 mb-24">
             <h3 className="text-xl md:text-2xl font-bold mb-1">{dict.nav?.book || 'Booking'}</h3>
             <p className="text-white/70 mb-6">{dict.heroSub}</p>
             <div className="grid md:grid-cols-2 gap-4">
-              <input className="bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full" placeholder={labels.name} autoComplete="name" value={form.name} onChange={on('name')} />
-              <input className="bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full" type="tel" inputMode="tel" autoComplete="tel" placeholder={labels.phone} value={form.phone} onChange={on('phone')} />
-              <input className="bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full" placeholder={labels.pickup} value={form.pickup} onChange={on('pickup')} />
-              <input className="bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full" placeholder={labels.dropoff} value={form.dropoff} onChange={on('dropoff')} />
-              <input type="date" className="bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full" placeholder={labels.pickDate} value={form.pickDate} onChange={on('pickDate')} />
-              <input type="time" className="bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full" placeholder={labels.pickTime} value={form.pickTime} onChange={on('pickTime')} />
-              <input type="date" className="bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full" placeholder={labels.dropDate} value={form.dropDate} onChange={on('dropDate')} />
-              <input type="time" className="bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full" placeholder={labels.dropTime} value={form.dropTime} onChange={on('dropTime')} />
-              <select className="bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full" value={form.category} onChange={on('category')}>
-                <option value="">{labels.category || 'Category'}</option>
-                {t[lang].categories.map((c)=> <option key={c.code} value={c.code}>{c.name}</option>)}
-              </select>
-              <input className="bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full" placeholder={labels.notes} value={form.notes} onChange={on('notes')} />
+              <div><div className={labelCls}>{labels.name}</div><input required className={boxCls} placeholder={labels.name} autoComplete="name" value={form.name} onChange={on('name')} /></div>
+              <div><div className={labelCls}>{labels.phone}</div><input required className={boxCls} type="tel" inputMode="tel" autoComplete="tel" placeholder={labels.phone} value={form.phone} onChange={on('phone')} /></div>
+              <div><div className={labelCls}>{labels.pickup}</div><input required className={boxCls} placeholder={labels.pickup} value={form.pickup} onChange={on('pickup')} /></div>
+              <div><div className={labelCls}>{labels.dropoff}</div><input required className={boxCls} placeholder={labels.dropoff} value={form.dropoff} onChange={on('dropoff')} /></div>
+              <div><div className={labelCls}>{labels.pickDate}</div><input required type="date" className={boxCls} value={form.pickDate} onChange={on('pickDate')} /></div>
+              <div><div className={labelCls}>{labels.pickTime}</div><input required type="time" className={boxCls} value={form.pickTime} onChange={on('pickTime')} /></div>
+              <div><div className={labelCls}>{labels.dropDate}</div><input required type="date" className={boxCls} min={form.pickDate||''} value={form.dropDate} onChange={on('dropDate')} /></div>
+              <div><div className={labelCls}>{labels.dropTime}</div><input required type="time" className={boxCls} min={sameDay? (form.pickTime||'') : ''} value={form.dropTime} onChange={on('dropTime')} /></div>
+              <div className="md:col-span-2"><div className={labelCls}>{labels.category}</div>
+                <select required className={boxCls} value={form.category} onChange={on('category')}>
+                  <option value="">—</option>
+                  {t[lang].categories.map((c)=> <option key={c.code} value={c.code}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-2"><div className={labelCls}>{labels.notes}</div><input className={boxCls} placeholder={labels.notes} value={form.notes} onChange={on('notes')} /></div>
             </div>
             <button disabled={sending} className="mt-5 inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold bg-orange-500 text-white shadow hover:bg-orange-600 disabled:opacity-60 w-full sm:w-auto">{sending ? '…' : labels.submit || 'Send'}</button>
           </form>
@@ -195,23 +218,21 @@
                   <a href="#fleet" className="hover:text-orange-400">{dict.nav?.fleet||'Fleet'}</a>
                   <a href="#how" className="hover:text-orange-400">{dict.nav?.how||'How'}</a>
                   <a href="#contact" className="hover:text-orange-400">{dict.nav?.contact||'Contact'}</a>
-                  <div className="relative">
-                    <select value={lang} onChange={(e)=>setLang(e.target.value)} className="bg-slate-800 text-white border border-white/20 rounded-lg px-2 py-1 font-semibold" aria-label="language-select">
-                      {LANGS.map(l=>(<option key={l.code} value={l.code}>{l.label}</option>))}
-                    </select>
-                  </div>
+                  <select value={lang} onChange={(e)=>setLang(e.target.value)} className="bg-slate-800 text-white border border-white/20 rounded-lg px-2 py-1 font-semibold" aria-label="language-select">
+                    {LANGS.map(l=>(<option key={l.code} value={l.code}>{l.label}</option>))}
+                  </select>
                 </nav>
               </div>
-              {/* Mobile quick nav + language */}
+              {/* Mobile quick nav (scrollable) */}
               <div className="md:hidden border-t border-white/10">
-                <div className="max-w-6xl mx-auto px-4 py-2 flex flex-wrap items-center gap-2 text-sm">
+                <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-2 text-sm overflow-x-auto no-scrollbar whitespace-nowrap">
                   <a href="#book" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav?.book||'Book'}</a>
                   <a href="#fleet" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav?.fleet||'Fleet'}</a>
                   <a href="#how" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav?.how||'How'}</a>
                   <a href="#contact" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav?.contact||'Contact'}</a>
                   <span className="flex-1"/>
-                  <select value={lang} onChange={(e)=>setLang(e.target.value)} className="bg-slate-800 text-white border border-white/20 rounded-lg px-2 py-1 font-semibold">
-                    {LANGS.map(l=>(<option key={l.code} value={l.code}>{l.label}</option>))}
+                  <select value={lang} onChange={(e)=>setLang(e.target.value)} className="bg-slate-800 text-white border border-white/20 rounded-lg px-2 py-1 font-semibold min-w-[56px]">
+                    {LANGS.map(l=>(<option key={l.code} value={l.code}>{l.short}</option>))}
                   </select>
                 </div>
               </div>
@@ -221,7 +242,7 @@
               <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-900 to-slate-800 p-8 md:p-12">
                 <div className="absolute -top-16 -left-16 h-64 w-64 bg-orange-500/20 blur-3xl rounded-full" />
                 <div className={cls("max-w-3xl", align)}>
-                  <h1 className="text-3xl md:text-5xl font-extrabold leading-tight">{dict.tagline}</h1>
+                  <h1 className="balance break-words hyphens-auto text-[28px] sm:text-4xl md:text-5xl font-extrabold leading-tight">{dict.tagline}</h1>
                   <p className="mt-4 text-white/80 md:text-lg">{dict.heroSub}</p>
                   <div className="mt-8 flex flex-col sm:flex-row gap-3">
                     <a href="#book" className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold bg-orange-500 text-white shadow hover:bg-orange-600 transition">{dict.nav?.book||'Book'}</a>
@@ -320,7 +341,7 @@
                           "عبور الحدود: مسموح فقط بموافقة مسبقة؛ قد تُفرض رسوم.",
                           "إرجاع خارج الدوام: صندوق مفاتيح ممكن؛ يُنصح بالتصوير.",
                         ],
-                      };
+                      }; 
                       return (lines[lang]||lines.en).map((li,i)=>(<li key={i}>{li}</li>))
                     })()}
                   </ul>
@@ -343,6 +364,12 @@
           </div>
         );
       }
+
+      // --- Tiny runtime checks (non-fatal) ---
+      try {
+        console.assert(/^\+?\d+$/.test(WA_NUMBER), 'WA_NUMBER format unexpected');
+        console.assert(WA_LINK.includes('wa.me/'), 'WA_LINK not built');
+      } catch(e) { /* ignore in production */ }
 
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(<App/>);
