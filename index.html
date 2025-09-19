@@ -1,772 +1,412 @@
-// KIRALINO — Premium Car Rentals (React TSX)
-// Mobile‑first, multilingual (EU + Hebrew), with grouped fleet (Cars / EVs / Vans)
-// Single-file component for the canvas runner.
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1220" />
+    <title>KIRALINO — Premium Car Rentals</title>
+    <meta name="description" content="Premium‑Mietwagen via Reisebüro. Verfügbarkeit & Angebot per WhatsApp — Optionen auf Anfrage." />
+    <!-- Browser-ready libs -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      html,body{background:#0b1220}
+      input,select,textarea{font-size:16px}
+      *{-webkit-tap-highlight-color:rgba(255,255,255,.1)}
+      .no-scrollbar::-webkit-scrollbar{display:none}
+      .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+      .balance{text-wrap:balance}
+    </style>
+  </head>
+  <body class="min-h-screen">
+    <div id="root"></div>
 
-import * as React from "react";
+    <script type="text/babel">
+      const {useState, useMemo} = React;
 
-// --- Constants & Utilities ---------------------------------------------------
-const WA_NUMBER = "+905537115022";
-const WA_LINK = "https://wa.me/" + WA_NUMBER.replace(/[^0-9+]/g, "");
+      // --- Config ------------------------------------------------------------
+      const WA_NUMBER = "+905537115022";
+      const WA_LINK = "https://wa.me/" + WA_NUMBER.replace(/[^0-9+]/g, "");
+      const RTL = new Set(["ar","he"]);
 
-// Helper: join classes
-function cls(...c: (string | false | null | undefined)[]) {
-  return c.filter(Boolean).join(" ");
-}
-// Datetime helper
-function parseDT(date?: string, time?: string) {
-  if (!date) return null; const t0 = time || "00:00"; const d = new Date(date + "T" + t0); return isNaN(+d) ? null : d;
-}
-// RTL languages set
-const RTL = new Set(["ar", "he"]);
+      // Languages fully localized here (kein Fallback auf Englisch)
+      const LANGS = [
+        {code:"de", label:"🇩🇪 Deutsch", short:"🇩🇪"},
+        {code:"tr", label:"🇹🇷 Türkçe", short:"🇹🇷"},
+        {code:"en", label:"🇬🇧 English", short:"🇬🇧"},
+        {code:"ar", label:"🇸🇦 العربية", short:"🇸🇦"},
+        {code:"he", label:"🇮🇱 עברית", short:"🇮🇱"},
+        {code:"es", label:"🇪🇸 Español", short:"🇪🇸"},
+        {code:"fr", label:"🇫🇷 Français", short:"🇫🇷"},
+        {code:"it", label:"🇮🇹 Italiano", short:"🇮🇹"},
+        {code:"pt", label:"🇵🇹 Português", short:"🇵🇹"},
+        {code:"nl", label:"🇳🇱 Nederlands", short:"🇳🇱"},
+        {code:"pl", label:"🇵🇱 Polski", short:"🇵🇱"},
+        {code:"el", label:"🇬🇷 Ελληνικά", short:"🇬🇷"},
+        {code:"ru", label:"🇷🇺 Русский", short:"🇷🇺"}
+      ];
 
-// --- Languages (selector list) ----------------------------------------------
-// Full EU coverage + Hebrew. For languages without a custom dictionary, we
-// automatically fall back to English strings (see getDict()/getFleet()).
-const LANGS: { code: string; label: string; short: string }[] = [
-  { code: "tr", label: "🇹🇷 Türkçe", short: "🇹🇷" },
-  { code: "de", label: "🇩🇪 Deutsch", short: "🇩🇪" },
-  { code: "en", label: "🇬🇧 English", short: "🇬🇧" },
-  { code: "ar", label: "🇸🇦 العربية", short: "🇸🇦" },
-  { code: "he", label: "🇮🇱 עברית", short: "🇮🇱" },
-  { code: "es", label: "🇪🇸 Español", short: "🇪🇸" },
-  { code: "fr", label: "🇫🇷 Français", short: "🇫🇷" },
-  { code: "it", label: "🇮🇹 Italiano", short: "🇮🇹" },
-  { code: "pt", label: "🇵🇹 Português", short: "🇵🇹" },
-  { code: "nl", label: "🇳🇱 Nederlands", short: "🇳🇱" },
-  { code: "pl", label: "🇵🇱 Polski", short: "🇵🇱" },
-  { code: "ro", label: "🇷🇴 Română", short: "🇷🇴" },
-  { code: "hu", label: "🇭🇺 Magyar", short: "🇭🇺" },
-  { code: "cs", label: "🇨🇿 Čeština", short: "🇨🇿" },
-  { code: "sk", label: "🇸🇰 Slovenčina", short: "🇸🇰" },
-  { code: "sl", label: "🇸🇮 Slovenščina", short: "🇸🇮" },
-  { code: "hr", label: "🇭🇷 Hrvatski", short: "🇭🇷" },
-  { code: "sr", label: "🇷🇸 Српски", short: "🇷🇸" },
-  { code: "bs", label: "🇧🇦 Bosanski", short: "🇧🇦" },
-  { code: "sq", label: "🇦🇱 Shqip", short: "🇦🇱" },
-  { code: "mk", label: "🇲🇰 Македонски", short: "🇲🇰" },
-  { code: "el", label: "🇬🇷 Ελληνικά", short: "🇬🇷" },
-  { code: "bg", label: "🇧🇬 Български", short: "🇧🇬" },
-  { code: "da", label: "🇩🇰 Dansk", short: "🇩🇰" },
-  { code: "sv", label: "🇸🇪 Svenska", short: "🇸🇪" },
-  { code: "no", label: "🇳🇴 Norsk", short: "🇳🇴" },
-  { code: "fi", label: "🇫🇮 Suomi", short: "🇫🇮" },
-  { code: "is", label: "🇮🇸 Íslenska", short: "🇮🇸" },
-  { code: "et", label: "🇪🇪 Eesti", short: "🇪🇪" },
-  { code: "lv", label: "🇱🇻 Latviešu", short: "🇱🇻" },
-  { code: "lt", label: "🇱🇹 Lietuvių", short: "🇱🇹" },
-  { code: "mt", label: "🇲🇹 Malti", short: "🇲🇹" },
-  { code: "ga", label: "🇮🇪 Gaeilge", short: "🇮🇪" },
-  { code: "uk", label: "🇺🇦 Українська", short: "🇺🇦" },
-  { code: "ru", label: "🇷🇺 Русский", short: "🇷🇺" }
-];
+      // UI Strings ------------------------------------------------------------
+      const I18N = {
+        de:{brand:"KIRALINO", tagline:"Premium‑Mietwagen — Reisebüro‑Vermittlung", heroSub:"Europaweit Premium‑Klassen mit All‑Inclusive‑Paket (Premium‑Schutz inklusive). Verfügbarkeit & Preis per WhatsApp — weitere Optionen auf Anfrage.", nav:{book:"Buchung",fleet:"Kategorien",how:"Ablauf",contact:"Kontakt"}, ctaPrimary:"Auf WhatsApp schreiben", ctaSecondary:"Kategorien ansehen", featuresTitle:"Warum Kiralino?", features:[{t:"Premium‑Fokus",d:"Nur gepflegte, wertige Fahrzeuge; wir matchen die passende Klasse."},{t:"Alles aus einer Hand",d:"Anfrage → Angebot → Bestätigung → Voucher; Übergabe/Rückgabe beim Anbieter."},{t:"All‑Inclusive",d:"Premium‑Schutz inklusive; weitere Extras (Kindersitz, Diesel‑Garantie, 2. Fahrer, Grenzübertritt) auf Anfrage."}], fleetTitle:"Kategorien (Beispiel: Modell — Klasse {orSimilar})", orSimilar:"oder ähnlich", howTitle:"So funktioniert’s", steps:[{t:"Details senden",d:"Zeitraum, Station, Klasse, Notizen — via WhatsApp oder Formular."},{t:"Matching",d:"Wir finden im Partnernetz die beste Option und schicken das Angebot."},{t:"Bestätigung & Voucher",d:"Nach OK buchen wir beim Anbieter; Übergabe/Retour beim Anbieter."}], thankTitle:"Anfrage erhalten!", thankDesc:"Wir melden uns in Kürze per WhatsApp.", contactTitle:"Jetzt per WhatsApp schreiben", footer:"© Kiralino — Vermittlung Premium‑Mietwagen", groups:{cars:"PKW", ev:"E‑Autos", vans:"Busse"}, legalHead:"Hinweise (variieren je nach Anbieter)", legalLines:["Dokumente: Ausweis/Pass und gültiger Führerschein.","Zahlungsmittel: Karte im Namen des Mieters.","Kaution: Kartenblock; Beträge je nach Klasse.","Grenzübertritt nur mit Genehmigung; ggf. Gebühr.","Rückgabe außerhalb Öffnungszeiten: Key‑Drop möglich; Fotos empfohlen."]},
+        tr:{brand:"KIRALINO", tagline:"Premium araç kiralama — seyahat acentesi aracılığı", heroSub:"Avrupa genelinde premium sınıflar, her şey dâhil paket (Premium koruma dâhil). Uygunluk ve fiyat WhatsApp ile — diğer seçenekler talep üzerine.", nav:{book:"Rezervasyon",fleet:"Kategoriler",how:"Aşamalar",contact:"İletişim"}, ctaPrimary:"WhatsApp’tan yazın", ctaSecondary:"Kategorileri gör", featuresTitle:"Neden Kiralino?", features:[{t:"Premium odak",d:"Sadece kaliteli ve bakımlı araçlar; uygun sınıfı eşleştiriyoruz."},{t:"Uçtan uca hizmet",d:"Talep → teklif → onay → voucher; teslim/iade sağlayıcıda."},{t:"Her şey dâhil",d:"Premium koruma dâhil; diğer ekstralar talep üzerine."}], fleetTitle:"Kategoriler (örnek: model — sınıf {orSimilar})", orSimilar:"veya benzeri", howTitle:"Nasıl çalışır?", steps:[{t:"Talebinizi iletin",d:"Tarih, istasyon, sınıf, notlar — WhatsApp/form."},{t:"Eşleştirme",d:"Ağımızda en iyi seçeneği bulup teklif göndeririz."},{t:"Onay & voucher",d:"Onay sonrası sağlayıcıda rezervasyon."}], thankTitle:"Talebinizi aldık!", thankDesc:"Kısa sürede WhatsApp’tan döneceğiz.", contactTitle:"WhatsApp’tan yazın", footer:"© Kiralino — Premium araç kiralama aracılığı", groups:{cars:"Binek", ev:"Elektrik", vans:"Minibüs"}, legalHead:"Notlar (sağlayıcıya göre değişir)", legalLines:["Belgeler: Kimlik/pasaport ve ehliyet.","Ödeme: Kiracı adına kart.","Depozito: karttan bloke; tutar sınıfa göre.","Sınır geçişi ön onaylıdır; ücret olabilir.","Mesai dışı iade: anahtar kutusu; fotoğraf önerilir."]},
+        en:{brand:"KIRALINO", tagline:"Premium car rentals — Travel agency brokerage", heroSub:"Premium classes across Europe with an all‑inclusive package (premium protection included). Availability & quote via WhatsApp — further options on request.", nav:{book:"Booking",fleet:"Categories",how:"Process",contact:"Contact"}, ctaPrimary:"Message on WhatsApp", ctaSecondary:"Browse categories", featuresTitle:"Why Kiralino?", features:[{t:"Premium only",d:"Curated, well‑maintained vehicles matched to your trip."},{t:"End‑to‑end",d:"Request → quote → confirm → voucher; pickup/return by supplier."},{t:"All‑inclusive",d:"Premium protection included; other extras on request."}], fleetTitle:"Categories (example: model — class {orSimilar})", orSimilar:"or similar", howTitle:"How it works", steps:[{t:"Send details",d:"Dates, station, class, notes — via WhatsApp/form."},{t:"We match options",d:"We search our network and send the best fit."},{t:"Confirm & voucher",d:"After OK we reserve with the supplier."}], thankTitle:"Request received!", thankDesc:"We’ll get back shortly on WhatsApp.", contactTitle:"Message us on WhatsApp", footer:"© Kiralino — Premium brokerage", groups:{cars:"Cars", ev:"EVs", vans:"Vans"}, legalHead:"Notes (vary by supplier)", legalLines:["Documents: ID/passport and valid licence.","Payment: card in renter’s name.","Deposit: card hold; amount depends on class.","Cross‑border by prior approval; fees possible.","After‑hours return: key drop; take photos."]},
+        ar:{brand:"KIRALINO", tagline:"تأجير سيارات فاخرة — وكالة سفر وسيطة", heroSub:"فئات فاخرة في كل أوروبا مع باقة شاملة (تشمل الحماية المميزة). التسعير عبر واتساب — خيارات إضافية عند الطلب.", nav:{book:"حجز",fleet:"الفئات",how:"الخطوات",contact:"تواصل"}, ctaPrimary:"راسلنا على واتساب", ctaSecondary:"تصفّح الفئات", featuresTitle:"لماذا كيرالينو؟", features:[{t:"فئة فاخرة فقط",d:"أسطول منتقى بعناية؛ نطابق الفئة المناسبة لرحلتك."},{t:"خدمة متكاملة",d:"طلب → عرض → تأكيد → قسيمة؛ الاستلام/التسليم لدى المورّد."},{t:"كلّ شامل",d:"تشمل الحماية المميزة؛ إضافات أخرى عند الطلب."}], fleetTitle:"الفئات (مثال: موديل — الفئة {orSimilar})", orSimilar:"أو ما شابه", howTitle:"كيف تعمل؟", steps:[{t:"أرسل التفاصيل",d:"تواريخ، المحطة، الفئة، ملاحظات — عبر واتساب/النموذج."},{t:"مطابقة الخيارات",d:"نبحث في شبكة الشركاء ونرسل الأنسب."},{t:"تأكيد وقسيمة",d:"بعد الموافقة نحجز لدى المورّد."}], thankTitle:"تم استلام الطلب!", thankDesc:"سنتواصل قريبًا عبر واتساب.", contactTitle:"راسِلنا عبر واتساب", footer:"© كيرالينو — وساطة تأجير سيارات فاخرة", groups:{cars:"سيارات", ev:"كهربائية", vans:"حافلات صغيرة"}, legalHead:"ملاحظات (تختلف حسب المورد)", legalLines:["الوثائق: هوية/جواز ساري ورخصة قيادة.","الدفع: بطاقة باسم المستأجر.","الوديعة: حجز على البطاقة؛ يختلف حسب الفئة.","عبور الحدود بموافقة مسبقة؛ قد تُفرض رسوم.","إرجاع خارج الدوام: صندوق مفاتيح؛ يُنصح بالتصوير."]},
+        he:{brand:"KIRALINO", tagline:"השכרת רכב פרימיום — סוכנות נסיעות מתווכת", heroSub:"קטגוריות פרימיום בכל אירופה עם חבילה הכוללת הכול (כולל כיסוי פרימיום). זמינות והצעת מחיר ב‑WhatsApp — תוספות לפי בקשה.", nav:{book:"הזמנה",fleet:"קטגוריות",how:"תהליך",contact:"צור קשר"}, ctaPrimary:"הודעה ב‑WhatsApp", ctaSecondary:"צפה בקטגוריות", featuresTitle:"למה קיראלינו?", features:[{t:"פרימיום בלבד",d:"צי נבחר ומתוחזק; נתאים את הקטגוריה המתאימה."},{t:"שירות מקצה לקצה",d:"פנייה → הצעה → אישור → שובר; מסירה/החזרה אצל הספק."},{t:"הכול כלול",d:"כיסוי פרימיום כלול; תוספות לפי בקשה."}], fleetTitle:"קטגוריות (דוגמה: דגם — קטגוריה {orSimilar})", orSimilar:"או דומה", howTitle:"איך זה עובד", steps:[{t:"שלחו פרטים",d:"תאריכים, תחנה, קטגוריה, הערות — WhatsApp/טופס."},{t:"התאמת אפשרויות",d:"נחפש ברשת השותפים ונשלח את ההתאמה הטובה."},{t:"אישור ושובר",d:"לאחר אישור נזמין אצל הספק."}], thankTitle:"הבקשה התקבלה!", thankDesc:"נחזור אליכם בקרוב ב‑WhatsApp.", contactTitle:"כתבו לנו ב‑WhatsApp", footer:"© Kiralino — תיווך השכרת רכב פרימיום", groups:{cars:"מכוניות", ev:"חשמליות", vans:"וואנים"}, legalHead:"הערות (משתנות לפי ספק)", legalLines:["מסמכים: תעודה מזהה/דרכון ורישיון תקף.","תשלום: כרטיס על שם השוכר.","פיקדון: חסימה בכרטיס; הסכום לפי קטגוריה.","מעבר גבול באישור מראש; ייתכנו חיובים.","החזרה מחוץ לשעות: תיבת מפתחות; מומלץ לצלם."]},
+        es:{brand:"KIRALINO", tagline:"Alquiler de coches premium — Agencia intermediaria", heroSub:"Clases premium en toda Europa con paquete todo incluido (protección premium incluida). Disponibilidad y precio por WhatsApp — más opciones a petición.", nav:{book:"Reserva",fleet:"Categorías",how:"Proceso",contact:"Contacto"}, ctaPrimary:"Escríbenos por WhatsApp", ctaSecondary:"Ver categorías", featuresTitle:"¿Por qué Kiralino?", features:[{t:"Solo premium",d:"Vehículos cuidados; ajustamos la categoría a tu viaje."},{t:"Servicio integral",d:"Solicitud → oferta → confirmación → bono; entrega/devolución con el proveedor."},{t:"Todo incluido",d:"Protección premium incluida; extras bajo petición."}], fleetTitle:"Categorías (ej.: modelo — clase {orSimilar})", orSimilar:"o similar", howTitle:"Cómo funciona", steps:[{t:"Envía tus datos",d:"Fechas, oficina, categoría, notas — WhatsApp/formulario."},{t:"Buscamos opciones",d:"Encontramos la mejor y te la enviamos."},{t:"Confirma y bono",d:"Tras tu OK, reservamos con el proveedor."}], thankTitle:"¡Solicitud recibida!", thankDesc:"Te contactamos por WhatsApp en breve.", contactTitle:"Escríbenos por WhatsApp", footer:"© Kiralino — Intermediación premium", groups:{cars:"Coches", ev:"Eléctricos", vans:"Furgonetas"}, legalHead:"Notas (varían según proveedor)", legalLines:["Documentos: DNI/pasaporte y permiso válido.","Pago: tarjeta a nombre del titular.","Depósito: retención; importe según categoría.","Cruce de fronteras con aprobación previa.","Devolución fuera de horario: buzón; haz fotos."]},
+        fr:{brand:"KIRALINO", tagline:"Location de voitures premium — Agence intermédiaire", heroSub:"Catégories premium partout en Europe avec formule tout compris (protection premium incluse). Disponibilité & devis via WhatsApp — options sur demande.", nav:{book:"Réserver",fleet:"Catégories",how:"Processus",contact:"Contact"}, ctaPrimary:"Écrire sur WhatsApp", ctaSecondary:"Voir les catégories", featuresTitle:"Pourquoi Kiralino ?", features:[{t:"Premium uniquement",d:"Véhicules soignés; nous adaptons la catégorie."},{t:"Service de bout en bout",d:"Demande → devis → confirmation → voucher; remise/reprise chez le fournisseur."},{t:"Tout compris",d:"Protection premium incluse; extras sur demande."}], fleetTitle:"Catégories (ex. : modèle — classe {orSimilar})", orSimilar:"ou similaire", howTitle:"Comment ça marche", steps:[{t:"Envoyez les détails",d:"Dates, agence, catégorie, notes — WhatsApp/formulaire."},{t:"Nous trouvons l’option",d:"Nous cherchons et envoyons la meilleure."},{t:"Confirmez & voucher",d:"Après accord, réservation chez le fournisseur."}], thankTitle:"Demande reçue !", thankDesc:"Nous revenons vers vous sur WhatsApp.", contactTitle:"Écrire sur WhatsApp", footer:"© Kiralino — Intermédiation premium", groups:{cars:"Voitures", ev:"Électriques", vans:"Vans"}, legalHead:"Notes (selon fournisseur)", legalLines:["Documents : pièce d’identité et permis en cours.","Paiement : carte au nom du locataire.","Dépôt : empreinte; montant selon catégorie.","Frontières : sur autorisation préalable.","Retour hors horaires : boîte à clés; photos conseillées."]},
+        it:{brand:"KIRALINO", tagline:"Noleggio auto premium — Agenzia intermediaria", heroSub:"Classi premium in tutta Europa con pacchetto all‑inclusive (protezione premium inclusa). Disponibilità e preventivo via WhatsApp — opzioni su richiesta.", nav:{book:"Prenota",fleet:"Categorie",how:"Procedura",contact:"Contatti"}, ctaPrimary:"Scrivici su WhatsApp", ctaSecondary:"Vedi categorie", featuresTitle:"Perché Kiralino?", features:[{t:"Solo premium",d:"Veicoli curati; adattiamo la categoria al viaggio."},{t:"Servizio end‑to‑end",d:"Richiesta → preventivo → conferma → voucher; ritiro/restituzione presso il fornitore."},{t:"Tutto incluso",d:"Protezione premium inclusa; extra su richiesta."}], fleetTitle:"Categorie (es.: modello — classe {orSimilar})", orSimilar:"o simile", howTitle:"Come funziona", steps:[{t:"Invia i dettagli",d:"Date, stazione, categoria, note — WhatsApp/modulo."},{t:"Cerchiamo opzioni",d:"Troviamo la migliore e te la inviamo."},{t:"Conferma & voucher",d:"Dopo l’OK, prenotiamo col fornitore."}], thankTitle:"Richiesta ricevuta!", thankDesc:"Ti ricontattiamo su WhatsApp a breve.", contactTitle:"Scrivici su WhatsApp", footer:"© Kiralino — Intermediazione premium", groups:{cars:"Auto", ev:"Elettriche", vans:"Van"}, legalHead:"Note (variano per fornitore)", legalLines:["Documenti: ID/passaporto e patente valida.","Pagamento: carta intestata al locatario.","Deposito: preautorizzazione; importo per classe.","Frontiere: previa autorizzazione.","Rientro fuori orario: box chiavi; fare foto."]},
+        pt:{brand:"KIRALINO", tagline:"Aluguer premium — Agência intermediária", heroSub:"Classes premium em toda a Europa com pacote all‑inclusive (proteção premium incluída). Disponibilidade e preço via WhatsApp — opções sob pedido.", nav:{book:"Reserva",fleet:"Categorias",how:"Processo",contact:"Contacto"}, ctaPrimary:"Falar no WhatsApp", ctaSecondary:"Ver categorias", featuresTitle:"Porquê a Kiralino?", features:[{t:"Só premium",d:"Viaturas cuidadas; ajustamos a categoria."},{t:"Serviço completo",d:"Pedido → orçamento → confirmação → voucher; entrega/devolução no fornecedor."},{t:"Tudo incluído",d:"Proteção premium incluída; extras sob pedido."}], fleetTitle:"Categorias (ex.: modelo — classe {orSimilar})", orSimilar:"ou semelhante", howTitle:"Como funciona", steps:[{t:"Envie os dados",d:"Datas, estação, categoria, notas — WhatsApp/formulário."},{t:"Procuramos opções",d:"Escolhemos a melhor e enviamos."},{t:"Confirmar & voucher",d:"Após OK reservamos com o fornecedor."}], thankTitle:"Pedido recebido!", thankDesc:"Entraremos em contacto pelo WhatsApp.", contactTitle:"Falar no WhatsApp", footer:"© Kiralino — Intermediação premium", groups:{cars:"Carros", ev:"Elétricos", vans:"Carrinhas"}, legalHead:"Notas (variáveis por fornecedor)", legalLines:["Documentos: ID/passaporte e carta válida.","Pagamento: cartão em nome do locatário.","Depósito: caução no cartão; valor por classe.","Fronteiras com autorização prévia.","Devolução fora de horas: caixa de chaves; tirar fotos."]},
+        nl:{brand:"KIRALINO", tagline:"Premium autoverhuur — Reisbureau‑bemiddeling", heroSub:"Premium klassen in heel Europa met all‑inclusive pakket (inclusief premium bescherming). Beschikbaarheid & prijs via WhatsApp — extra’s op aanvraag.", nav:{book:"Boeken",fleet:"Categorieën",how:"Proces",contact:"Contact"}, ctaPrimary:"WhatsApp bericht", ctaSecondary:"Bekijk categorieën", featuresTitle:"Waarom Kiralino?", features:[{t:"Alleen premium",d:"Verzorgde voertuigen; wij matchen de juiste klasse."},{t:"End‑to‑end",d:"Aanvraag → offerte → bevestiging → voucher; afhalen/inleveren bij leverancier."},{t:"All‑inclusive",d:"Premium bescherming inbegrepen; extra’s op aanvraag."}], fleetTitle:"Categorieën (voorbeeld: model — klasse {orSimilar})", orSimilar:"of vergelijkbaar", howTitle:"Hoe werkt het", steps:[{t:"Stuur details",d:"Data, locatie, klasse, notities — WhatsApp/formulier."},{t:"Wij matchen opties",d:"We zoeken de beste optie en sturen die."},{t:"Bevestig & voucher",d:"Na akkoord boeken we bij de leverancier."}], thankTitle:"Aanvraag ontvangen!", thankDesc:"We nemen snel contact op via WhatsApp.", contactTitle:"Stuur WhatsApp", footer:"© Kiralino — Premium bemiddeling", groups:{cars:"Auto’s", ev:"EV’s", vans:"Busjes"}, legalHead:"Opmerkingen (per leverancier)", legalLines:["Documenten: ID/paspoort en geldig rijbewijs.","Betaling: kaart op naam huurder.","Borg: reservering; bedrag per klasse.","Grensovergang met toestemming.","Inleveren buiten openingstijden: sleutelbox; foto’s maken."]},
+        pl:{brand:"KIRALINO", tagline:"Wynajem premium — Pośrednictwo biura podróży", heroSub:"Klasy premium w całej Europie z pakietem all‑inclusive (z ochroną premium). Dostępność i wycena przez WhatsApp — opcje na życzenie.", nav:{book:"Rezerwacja",fleet:"Kategorie",how:"Proces",contact:"Kontakt"}, ctaPrimary:"Napisz na WhatsApp", ctaSecondary:"Zobacz kategorie", featuresTitle:"Dlaczego Kiralino?", features:[{t:"Tylko premium",d:"Zadbane pojazdy; dobierzemy właściwą klasę."},{t:"Kompleksowa obsługa",d:"Zapytanie → oferta → potwierdzenie → voucher; odbiór/zwrot u dostawcy."},{t:"Wszystko w cenie",d:"Ochrona premium w cenie; dodatkowe opcje na życzenie."}], fleetTitle:"Kategorie (przykład: model — klasa {orSimilar})", orSimilar:"lub podobny", howTitle:"Jak to działa", steps:[{t:"Wyślij szczegóły",d:"Terminy, oddział, klasa, uwagi — WhatsApp/formularz."},{t:"Dobieramy opcje",d:"Szukamy najlepszej i wysyłamy."},{t:"Potwierdź & voucher",d:"Po akceptacji rezerwujemy u dostawcy."}], thankTitle:"Zgłoszenie otrzymane!", thankDesc:"Odezwiemy się wkrótce na WhatsApp.", contactTitle:"Napisz na WhatsApp", footer:"© Kiralino — Pośrednictwo premium", groups:{cars:"Samochody", ev:"E‑auta", vans:"Vany"}, legalHead:"Uwagi (różnią się wg dostawcy)", legalLines:["Dokumenty: dowód/paszport i ważne prawo jazdy.","Płatność: karta na nazwisko najemcy.","Kaucja: blokada na karcie; kwota wg klasy.","Przekroczenie granicy po zgodzie.","Zwrot po godzinach: wrzutnia kluczy; zdjęcia zalecane."]},
+        el:{brand:"KIRALINO", tagline:"Ενοικίαση premium — Μεσιτεία ταξιδιωτικού γραφείου", heroSub:"Premium κατηγορίες σε όλη την Ευρώπη με all‑inclusive πακέτο (συμπερ. premium κάλυψη). Διαθεσιμότητα & τιμή μέσω WhatsApp — επιπλέον επιλογές κατόπιν αιτήματος.", nav:{book:"Κράτηση",fleet:"Κατηγορίες",how:"Διαδικασία",contact:"Επικοινωνία"}, ctaPrimary:"Γράψτε στο WhatsApp", ctaSecondary:"Δείτε κατηγορίες", featuresTitle:"Γιατί η Kiralino;", features:[{t:"Μόνο premium",d:"Προσεγμένα οχήματα· ταιριάζουμε τη σωστή κατηγορία."},{t:"End‑to‑end",d:"Αίτημα → προσφορά → επιβεβαίωση → voucher· παράδοση/παραλαβή στον πάροχο."},{t:"All‑inclusive",d:"Premium κάλυψη περιλαμβάνεται· άλλα extra κατόπιν αιτήματος."}], fleetTitle:"Κατηγορίες (π.χ.: μοντέλο — κατηγορία {orSimilar})", orSimilar:"ή παρόμοιο", howTitle:"Πώς λειτουργεί", steps:[{t:"Στείλτε στοιχεία",d:"Ημερομηνίες, σταθμός, κατηγορία, σημειώσεις — WhatsApp/φόρμα."},{t:"Ταίριασμα επιλογών",d:"Βρίσκουμε την καλύτερη και τη στέλνουμε."},{t:"Επιβεβαίωση & voucher",d:"Μετά το ΟΚ, κράτηση στον πάροχο."}], thankTitle:"Λάβαμε το αίτημα!", thankDesc:"Θα επικοινωνήσουμε σύντομα μέσω WhatsApp.", contactTitle:"Μήνυμα στο WhatsApp", footer:"© Kiralino — Premium μεσιτεία", groups:{cars:"Αυτοκίνητα", ev:"Ηλεκτρικά", vans:"Vans"}, legalHead:"Σημειώσεις (διαφέρουν ανά πάροχο)", legalLines:["Έγγραφα: ταυτότητα/διαβατήριο & άδεια οδήγησης.","Πληρωμή: κάρτα στο όνομα του μισθωτή.","Εγγύηση: δέσμευση κάρτας· ποσό ανά κατηγορία.","Διέλευση συνόρων με έγκριση.","Επιστροφή εκτός ωραρίου: θυρίδα κλειδιών· φωτογραφίες."]},
+        ru:{brand:"KIRALINO", tagline:"Премиум‑прокат — агентское бронирование", heroSub:"Премиум‑классы по всей Европе с пакетом «всё включено» (включая премиум‑страхование). Доступность и цена в WhatsApp — доп. опции по запросу.", nav:{book:"Бронирование",fleet:"Категории",how:"Процесс",contact:"Контакты"}, ctaPrimary:"Написать в WhatsApp", ctaSecondary:"Смотреть категории", featuresTitle:"Почему Kiralino?", features:[{t:"Только премиум",d:"Ухоженный парк; подберём подходящий класс."},{t:"Полный цикл",d:"Запрос → оферта → подтверждение → ваучер; выдача/возврат у поставщика."},{t:"Всё включено",d:"Премиум‑защита включена; прочие опции по запросу."}], fleetTitle:"Категории (пример: модель — класс {orSimilar})", orSimilar:"или аналогичный", howTitle:"Как это работает", steps:[{t:"Пришлите детали",d:"Даты, станция, класс, примечания — WhatsApp/форма."},{t:"Подберём вариант",d:"Найдём лучший и пришлём на согласование."},{t:"Подтверждение и ваучер",d:"После ОК бронируем у поставщика."}], thankTitle:"Заявка получена!", thankDesc:"Свяжемся в WhatsApp в ближайшее время.", contactTitle:"Написать в WhatsApp", footer:"© Kiralino — премиальная агентская служба", groups:{cars:"Авто", ev:"Электро", vans:"Вэны"}, legalHead:"Примечания (зависят от поставщика)", legalLines:["Документы: паспорт и действ. права.","Оплата: карта на имя арендатора.","Депозит: блокировка на карте; сумма по классу.","Пересечение границ по согласованию.","Возврат вне часов: бокс для ключей; фото."]}
+      };
 
-// --- Translations (customized for core langs; others fall back to EN) --------
-const t: Record<string, any> = {
-  tr: {
-    brand: "KIRALINO",
-    tagline: "Premium araç kiralama — seyahat acentesi aracılığı",
-    heroSub: "Avrupa genelinde premium sınıflar, her şey dâhil paket (Premium koruma dâhil). Uygunluk ve fiyat WhatsApp ile — diğer seçenekler talep üzerine.",
-    nav: { book: "Rezervasyon", fleet: "Kategoriler", how: "Aşamalar", contact: "İletişim" },
-    ctaPrimary: "WhatsApp’tan yazın",
-    ctaSecondary: "Kategorileri gör",
-    featuresTitle: "Neden Kiralino?",
-    features: [
-      { title: "Premium odak", text: "Sadece kaliteli ve bakımlı araçlar; doğru sınıfı sizin için eşleştiriyoruz." },
-      { title: "Tek noktadan hizmet", text: "Talep → teklif → onay → voucher: hepsi bizden, teslim/iade sağlayıcıda." },
-      { title: "Her şey dâhil", text: "Premium koruma dâhil; diğer ekstralar (çocuk koltuğu, dizel garantisi, 2. sürücü, sınır geçişi) talep üzerine." }
-    ],
-    fleetTitle: "Kategoriler (örnek: model — sınıf {orSimilar})",
-    orSimilar: "veya benzeri",
-    howTitle: "Nasıl çalışır?",
-    steps: [
-      { title: "Talebinizi iletin", text: "Tarih, istasyon, sınıf, notlar — WhatsApp veya form." },
-      { title: "Uygunluk eşleştirme", text: "Partner ağında en iyi seçeneği bulup teklifi gönderiyoruz." },
-      { title: "Onay ve voucher", text: "Onay sonrası sağlayıcıya rezervasyon; teslim ve iade sağlayıcıda." }
-    ],
-    thankTitle: "Talebinizi aldık!",
-    thankDesc: "Kısa sürede WhatsApp’tan dönüş yapacağız.",
-    contactTitle: "WhatsApp’tan yazın",
-    footer: "© Kiralino — Premium araç kiralama aracılığı"
-  },
-  de: {
-    brand: "KIRALINO",
-    tagline: "Premium‑Mietwagen — Reisebüro‑Vermittlung",
-    heroSub: "Europaweit Premium‑Klassen mit All‑Inclusive‑Paket (Premium‑Schutz inklusive). Verfügbarkeit und Preis per WhatsApp — weitere Optionen auf Anfrage.",
-    nav: { book: "Buchung", fleet: "Kategorien", how: "Ablauf", contact: "Kontakt" },
-    ctaPrimary: "Auf WhatsApp schreiben",
-    ctaSecondary: "Kategorien ansehen",
-    featuresTitle: "Warum Kiralino?",
-    features: [
-      { title: "Premium‑Fokus", text: "Nur gepflegte, wertige Fahrzeuge; wir matchen die passende Klasse." },
-      { title: "Alles aus einer Hand", text: "Anfrage → Angebot → Bestätigung → Voucher; Übergabe und Rückgabe beim Anbieter." },
-      { title: "All‑Inclusive", text: "Premium‑Schutz inklusive; weitere Extras (Kindersitz, Diesel‑Garantie, 2. Fahrer, Grenzübertritt) auf Anfrage." }
-    ],
-    fleetTitle: "Kategorien (Beispiel: Modell — Klasse {orSimilar})",
-    orSimilar: "oder ähnlich",
-    howTitle: "So funktioniert’s",
-    steps: [
-      { title: "Details senden", text: "Zeitraum, Station, Klasse, Notizen — via WhatsApp oder Formular." },
-      { title: "Matching", text: "Wir finden im Partnernetz die beste Option und schicken das Angebot." },
-      { title: "Bestätigung und Voucher", text: "Nach OK buchen wir beim Anbieter; Übergabe und Retour beim Anbieter." }
-    ],
-    thankTitle: "Anfrage erhalten!",
-    thankDesc: "Wir melden uns in Kürze per WhatsApp.",
-    contactTitle: "Jetzt per WhatsApp schreiben",
-    footer: "© Kiralino — Vermittlung Premium‑Mietwagen"
-  },
-  en: {
-    brand: "KIRALINO",
-    tagline: "Premium car rentals — Travel agency brokerage",
-    heroSub: "Premium classes across Europe with an all‑inclusive package (premium protection included). Availability and quote via WhatsApp — further options on request.",
-    nav: { book: "Booking", fleet: "Categories", how: "Process", contact: "Contact" },
-    ctaPrimary: "Message on WhatsApp",
-    ctaSecondary: "Browse categories",
-    featuresTitle: "Why Kiralino?",
-    features: [
-      { title: "Premium only", text: "Curated, well‑maintained vehicles; we match the right class for your trip." },
-      { title: "End‑to‑end service", text: "Request → quote → confirm → voucher; pickup and return handled by supplier." },
-      { title: "All‑inclusive", text: "Premium protection included; other extras (child seat, diesel guarantee, 2nd driver, cross‑border) on request." }
-    ],
-    fleetTitle: "Categories (example: model — class {orSimilar})",
-    orSimilar: "or similar",
-    howTitle: "How it works",
-    steps: [
-      { title: "Send your request", text: "Dates, station, class, notes — via WhatsApp or form." },
-      { title: "We match options", text: "We search our partner network and send the best fit for approval." },
-      { title: "Confirm and voucher", text: "After your OK we reserve with the supplier; pickup and return handled by them." }
-    ],
-    thankTitle: "Request received!",
-    thankDesc: "We will get back to you shortly on WhatsApp.",
-    contactTitle: "Message us on WhatsApp",
-    footer: "© Kiralino — Premium brokerage"
-  },
-  ar: {
-    brand: "KIRALINO",
-    tagline: "تأجير سيارات فاخرة — وكالة سفر وسيطة",
-    heroSub: "فئات فاخرة في كل أوروبا مع باقة شاملة (تشمل الحماية المميزة). التسعير عبر واتساب — خيارات إضافية عند الطلب.",
-    nav: { book: "حجز", fleet: "الفئات", how: "الخطوات", contact: "تواصل" },
-    ctaPrimary: "راسلنا على واتساب",
-    ctaSecondary: "تصفّح الفئات",
-    featuresTitle: "لماذا كيرالينو؟",
-    features: [
-      { title: "فئة فاخرة فقط", text: "أسطول منتقى بعناية؛ نطابق الفئة المناسبة لرحلتك." },
-      { title: "خدمة متكاملة", text: "طلب → عرض → تأكيد → قسيمة؛ الاستلام والتسليم لدى المورّد." },
-      { title: "كلّ شامل", text: "تشمل الحماية المميزة؛ إضافات أخرى (مقعد أطفال، ضمان الديزل، سائق ثانٍ، عبور حدود) عند الطلب." }
-    ],
-    fleetTitle: "الفئات (مثال: موديل — الفئة {orSimilar})",
-    orSimilar: "أو ما شابه",
-    howTitle: "كيف تعمل؟",
-    steps: [
-      { title: "أرسل التفاصيل", text: "تواريخ، المحطة، الفئة، ملاحظات — عبر واتساب أو النموذج." },
-      { title: "مطابقة الخيارات", text: "نبحث في شبكة شركائنا عن الخيار الأنسب ונשלח للموافقة." },
-      { title: "تأكيد وقسيمة", text: "بعد الموافقة نحجز لدى المورّد؛ الاستلام والتسليم عنده." }
-    ],
-    thankTitle: "تم استلام الطلب!",
-    thankDesc: "سنتواصل معكم قريبًا عبر واتساب.",
-    contactTitle: "راسِلנו عبر واتساب",
-    footer: "© كيرالينو — وساطة تأجير سيارات فاخرة"
-  },
-  he: {
-    brand: "KIRALINO",
-    tagline: "השכרת רכב פרימיום — סוכנות נסיעות מתווכת",
-    heroSub: "קטגוריות פרימיום ברחבי אירופה עם חבילה הכוללת הכול (כולל כיסוי פרימיום). זמינות והצעת מחיר ב‑WhatsApp — תוספות לפי בקשה.",
-    nav: { book: "הזמנה", fleet: "קטגוריות", how: "תהליך", contact: "צור קשר" },
-    ctaPrimary: "הודעה ב‑WhatsApp",
-    ctaSecondary: "צפה בקטגוריות",
-    featuresTitle: "למה קיראלינו?",
-    features: [
-      { title: "פרימיום בלבד", text: "צי נבחר ומתוחזק; נתאים את הקטגוריה המתאימה לנסיעה שלך." },
-      { title: "שירות מקצה לקצה", text: "פנייה → הצעה → אישור → ואוצ'ר; מסירה והחזרה אצל הספק." },
-      { title: "הכול כלול", text: "כיסוי פרימיום כלול; תוספות אחרות (כיסא תינוק, אחריות דיזל, נהג שני, חציית גבול) לפי בקשה." }
-    ],
-    fleetTitle: "קטגוריות (לדוגמה: דגם — קטגוריה {orSimilar})",
-    orSimilar: "או דומה",
-    howTitle: "איך זה עובד",
-    steps: [
-      { title: "שלחו פרטים", text: "תאריכים, תחנה, קטגוריה, הערות — דרך WhatsApp או טופס." },
-      { title: "התאמת אפשרויות", text: "נחפש ברשת השותפים ונשלח את ההתאמה הטובה ביותר לאישור." },
-      { title: "אישור ואישור הזמנה", text: "לאחר אישור נזמין אצל הספק; המסירה/החזרה מתבצעות אצלו." }
-    ],
-    thankTitle: "הבקשה התקבלה!",
-    thankDesc: "נחזור אליכם בקרוב ב‑WhatsApp.",
-    contactTitle: "כתבו לנו ב‑WhatsApp",
-    footer: "© Kiralino — תיווך השכרת רכב פרימיום"
-  }
-};
+      // Fleet groups & categories (codes are shared; names translated via map)
+      const FLEET_GROUPS = ["cars","ev","vans"];
+      const CODES = {
+        cars:[
+          ["mini","Hyundai i10"],["economy","Seat Ibiza"],["compact","Škoda Kamiq"],["compact_vw","VW Golf / Taigo / T‑Cross"],["compact_suv","VW T‑Roc"],["compact_wagon","Seat Leon ST"],["compact_elite","Audi A3 Sportback"],["intermediate_suv","Škoda Karoq"],["intermediate_sedan","Peugeot 408"],["intermediate_wagon","Škoda Octavia"],["intermediate_van","VW Touran"],["intermediate_elite","Audi Q3"],["standard_wagon","Škoda Superb"],["standard_suv","VW Tayron"],["fullsize_sedan","Audi A5"],["fullsize_wagon","Audi A5 Avant"],["premium_suv","Audi Q5"],["premium_wagon","Audi A6 Avant"],["premium_sedan","Audi A6"],["luxury_suv","VW Touareg"],["luxury_sedan","Audi A7"],["luxury_wagon","A6 Avant 3.0"],["on_request","S‑Class, A8, SQ7, Cayenne"]
+        ],
+        ev:[
+          ["e_economy","Renault 5 E‑Tech"],["e_compact","Hyundai Kona"],["e_intermediate","Škoda Elroq"],["e_standard","VW ID.7 Tourer"],["e_luxury","Audi e‑tron"],["e_on_request","Porsche Macan Electric"]
+        ],
+        vans:[
+          ["van_standard","Ford Transit (8–9)"],["van_elite","Mercedes Vito (9)"],["van_premium","VW Multivan / MB V‑Class (7–8)"]
+        ]
+      };
 
-// --- Fleet (groups & categories). For languages not defined here, fallback EN --
-const FLEET: Record<string, { groups: { key: string; label: string; categories: { code: string; name: string; sample: string }[] }[] }> = {
-  de: {
-    groups: [
-      { key: "cars", label: "PKW", categories: [
-        { code: "mini", name: "Mini", sample: "Hyundai i10" },
-        { code: "economy", name: "Economy", sample: "Seat Ibiza" },
-        { code: "compact", name: "Compact", sample: "Škoda Kamiq" },
-        { code: "compact_vw", name: "Compact VW", sample: "VW Golf / Taigo / T‑Cross" },
-        { code: "compact_suv", name: "Compact SUV", sample: "VW T‑Roc" },
-        { code: "compact_wagon", name: "Compact Kombi", sample: "Seat Leon ST" },
-        { code: "compact_elite", name: "Compact Elite", sample: "Audi A3 Sportback" },
-        { code: "intermediate_suv", name: "Intermediate SUV", sample: "Škoda Karoq" },
-        { code: "intermediate_sedan", name: "Intermediate Limousine", sample: "Peugeot 408" },
-        { code: "intermediate_wagon", name: "Intermediate Kombi", sample: "Škoda Octavia" },
-        { code: "intermediate_van", name: "Intermediate Van", sample: "VW Touran" },
-        { code: "intermediate_elite", name: "Intermediate Elite", sample: "Audi Q3" },
-        { code: "standard_wagon", name: "Standard Kombi", sample: "Škoda Superb" },
-        { code: "standard_suv", name: "Standard SUV", sample: "VW Tayron" },
-        { code: "fullsize_sedan", name: "Full‑Size Limousine", sample: "Audi A5" },
-        { code: "fullsize_wagon", name: "Full‑Size Kombi", sample: "Audi A5 Avant" },
-        { code: "premium_suv", name: "Premium SUV", sample: "Audi Q5" },
-        { code: "premium_wagon", name: "Premium Kombi", sample: "Audi A6 Avant" },
-        { code: "premium_sedan", name: "Premium Limousine", sample: "Audi A6" },
-        { code: "luxury_suv", name: "Luxus SUV", sample: "VW Touareg" },
-        { code: "luxury_sedan", name: "Luxus Limousine", sample: "Audi A7" },
-        { code: "luxury_wagon", name: "Luxus Kombi", sample: "A6 Avant 3.0" },
-        { code: "on_request", name: "High‑End (nur auf Anfrage)", sample: "S‑Klasse, A8, SQ7, Cayenne" }
-      ]},
-      { key: "ev", label: "E‑Autos", categories: [
-        { code: "e_economy", name: "E‑Economy", sample: "Renault 5 E‑Tech" },
-        { code: "e_compact", name: "E‑Compact", sample: "Hyundai Kona" },
-        { code: "e_intermediate", name: "E‑Intermediate", sample: "Škoda Elroq" },
-        { code: "e_standard", name: "E‑Standard", sample: "VW ID.7 Tourer" },
-        { code: "e_luxury", name: "E‑Luxus", sample: "Audi e‑tron" },
-        { code: "e_on_request", name: "E‑Premium (nur auf Anfrage)", sample: "Porsche Macan Electric" }
-      ]},
-      { key: "vans", label: "Busse", categories: [
-        { code: "van_standard", name: "Standard (8–9 Sitze)", sample: "Ford Transit" },
-        { code: "van_elite", name: "Standard Elite (9 Sitze)", sample: "Mercedes Vito" },
-        { code: "van_premium", name: "Premium (7–8 Sitze)", sample: "VW Multivan / MB V‑Klasse" }
-      ]}
-    ]
-  },
-  tr: {
-    groups: [
-      { key: "cars", label: "Binek (PKW)", categories: [
-        { code: "mini", name: "Mini", sample: "Hyundai i10" },
-        { code: "economy", name: "Ekonomi", sample: "Seat Ibiza" },
-        { code: "compact", name: "Kompakt", sample: "Škoda Kamiq" },
-        { code: "compact_vw", name: "Kompakt VW", sample: "Golf / Taigo / T‑Cross" },
-        { code: "compact_suv", name: "Kompakt SUV", sample: "VW T‑Roc" },
-        { code: "compact_wagon", name: "Kompakt Station", sample: "Seat Leon ST" },
-        { code: "compact_elite", name: "Kompakt Elite", sample: "Audi A3 Sportback" },
-        { code: "intermediate_suv", name: "Orta SUV", sample: "Škoda Karoq" },
-        { code: "intermediate_sedan", name: "Orta Sedan", sample: "Peugeot 408" },
-        { code: "intermediate_wagon", name: "Orta Station", sample: "Škoda Octavia" },
-        { code: "intermediate_van", name: "Orta Van", sample: "VW Touran" },
-        { code: "intermediate_elite", name: "Orta Elite", sample: "Audi Q3" },
-        { code: "standard_wagon", name: "Standart Station", sample: "Škoda Superb" },
-        { code: "standard_suv", name: "Standart SUV", sample: "VW Tayron" },
-        { code: "fullsize_sedan", name: "Full‑Size Sedan", sample: "Audi A5" },
-        { code: "fullsize_wagon", name: "Full‑Size Station", sample: "Audi A5 Avant" },
-        { code: "premium_suv", name: "Premium SUV", sample: "Audi Q5" },
-        { code: "premium_wagon", name: "Premium Station", sample: "Audi A6 Avant" },
-        { code: "premium_sedan", name: "Premium Sedan", sample: "Audi A6" },
-        { code: "luxury_suv", name: "Lüks SUV", sample: "VW Touareg" },
-        { code: "luxury_sedan", name: "Lüks Sedan", sample: "Audi A7" },
-        { code: "luxury_wagon", name: "Lüks Station", sample: "A6 Avant 3.0" },
-        { code: "on_request", name: "Üst segment (talep üzerine)", sample: "S‑Serisi, A8, SQ7, Cayenne" }
-      ]},
-      { key: "ev", label: "Elektrik", categories: [
-        { code: "e_economy", name: "E‑Ekonomi", sample: "Renault 5 E‑Tech" },
-        { code: "e_compact", name: "E‑Kompakt", sample: "Hyundai Kona" },
-        { code: "e_intermediate", name: "E‑Orta", sample: "Škoda Elroq" },
-        { code: "e_standard", name: "E‑Standart", sample: "VW ID.7 Tourer" },
-        { code: "e_luxury", name: "E‑Lüks", sample: "Audi e‑tron" },
-        { code: "e_on_request", name: "E‑Premium (talep üzerine)", sample: "Porsche Macan Electric" }
-      ]},
-      { key: "vans", label: "Minibüs", categories: [
-        { code: "van_standard", name: "Standart (8–9 koltuk)", sample: "Ford Transit" },
-        { code: "van_elite", name: "Standart Elite (9 koltuk)", sample: "Mercedes Vito" },
-        { code: "van_premium", name: "Premium (7–8 koltuk)", sample: "VW Multivan / MB V‑Class" }
-      ]}
-    ]
-  },
-  en: {
-    groups: [
-      { key: "cars", label: "Cars", categories: [
-        { code: "mini", name: "Mini", sample: "Hyundai i10" },
-        { code: "economy", name: "Economy", sample: "Seat Ibiza" },
-        { code: "compact", name: "Compact", sample: "Škoda Kamiq" },
-        { code: "compact_vw", name: "Compact VW", sample: "VW Golf / Taigo / T‑Cross" },
-        { code: "compact_suv", name: "Compact SUV", sample: "VW T‑Roc" },
-        { code: "compact_wagon", name: "Compact Wagon", sample: "Seat Leon ST" },
-        { code: "compact_elite", name: "Compact Elite", sample: "Audi A3 Sportback" },
-        { code: "intermediate_suv", name: "Intermediate SUV", sample: "Škoda Karoq" },
-        { code: "intermediate_sedan", name: "Intermediate Sedan", sample: "Peugeot 408" },
-        { code: "intermediate_wagon", name: "Intermediate Wagon", sample: "Škoda Octavia" },
-        { code: "intermediate_van", name: "Intermediate Van", sample: "VW Touran" },
-        { code: "intermediate_elite", name: "Intermediate Elite", sample: "Audi Q3" },
-        { code: "standard_wagon", name: "Standard Wagon", sample: "Škoda Superb" },
-        { code: "standard_suv", name: "Standard SUV", sample: "VW Tayron" },
-        { code: "fullsize_sedan", name: "Full‑Size Sedan", sample: "Audi A5" },
-        { code: "fullsize_wagon", name: "Full‑Size Wagon", sample: "Audi A5 Avant" },
-        { code: "premium_suv", name: "Premium SUV", sample: "Audi Q5" },
-        { code: "premium_wagon", name: "Premium Wagon", sample: "Audi A6 Avant" },
-        { code: "premium_sedan", name: "Premium Sedan", sample: "Audi A6" },
-        { code: "luxury_suv", name: "Luxury SUV", sample: "VW Touareg" },
-        { code: "luxury_sedan", name: "Luxury Sedan", sample: "Audi A7" },
-        { code: "luxury_wagon", name: "Luxury Wagon", sample: "A6 Avant 3.0" },
-        { code: "on_request", name: "High‑end (on request)", sample: "S‑Class, A8, SQ7, Cayenne" }
-      ]},
-      { key: "ev", label: "EVs", categories: [
-        { code: "e_economy", name: "EV Economy", sample: "Renault 5 E‑Tech" },
-        { code: "e_compact", name: "EV Compact", sample: "Hyundai Kona" },
-        { code: "e_intermediate", name: "EV Intermediate", sample: "Škoda Elroq" },
-        { code: "e_standard", name: "EV Standard", sample: "VW ID.7 Tourer" },
-        { code: "e_luxury", name: "EV Luxury", sample: "Audi e‑tron" },
-        { code: "e_on_request", name: "EV Premium (on request)", sample: "Porsche Macan Electric" }
-      ]},
-      { key: "vans", label: "Vans", categories: [
-        { code: "van_standard", name: "Standard (8–9 seats)", sample: "Ford Transit" },
-        { code: "van_elite", name: "Standard Elite (9 seats)", sample: "Mercedes Vito" },
-        { code: "van_premium", name: "Premium (7–8 seats)", sample: "VW Multivan / MB V‑Class" }
-      ]}
-    ]
-  },
-  ar: {
-    groups: [
-      { key: "cars", label: "سيارات", categories: [
-        { code: "mini", name: "ميني", sample: "هيونداي i10" },
-        { code: "economy", name: "اقتصادي", sample: "سيات إيبيزا" },
-        { code: "compact", name: "كومباكت", sample: "سكودا كاميق" },
-        { code: "compact_vw", name: "كومباكت VW", sample: "جولف / تايغو / تي‑كروس" },
-        { code: "compact_suv", name: "SUV مدمج", sample: "فولקס فاجן T‑Roc" },
-        { code: "compact_wagon", name: "ستيشن كومباكت", sample: "سيات ليون ST" },
-        { code: "compact_elite", name: "كومباكت إيليت", sample: "أودي A3 سبورتباك" },
-        { code: "intermediate_suv", name: "SUV متوسط", sample: "سكودا كاروق" },
-        { code: "intermediate_sedan", name: "سيدان متوسط", sample: "بيجو 408" },
-        { code: "intermediate_wagon", name: "ستيشن متوسط", sample: "سكودا أوكتافיה" },
-        { code: "intermediate_van", name: "فان متوسط", sample: "فولקס فاجן توران" },
-        { code: "intermediate_elite", name: "متوسط إيليت", sample: "أودي Q3" },
-        { code: "standard_wagon", name: "ستيشن ستاندارد", sample: "سكودا سوبرب" },
-        { code: "standard_suv", name: "SUV ستاندارد", sample: "فולקס فاجן تايرון" },
-        { code: "fullsize_sedan", name: "سيدان فل سايز", sample: "أودي A5" },
-        { code: "fullsize_wagon", name: "ستيشن فل سايز", sample: "أودي A5 أفانت" },
-        { code: "premium_suv", name: "SUV فاخر", sample: "أودي Q5" },
-        { code: "premium_wagon", name: "ستيشن فاخر", sample: "أودي A6 أفانت" },
-        { code: "premium_sedan", name: "سيدان فاخر", sample: "أודי A6" },
-        { code: "luxury_suv", name: "SUV فاخر جدًا", sample: "فولקס فאגן طوارق" },
-        { code: "luxury_sedan", name: "سيدان فاخرة جدًا", sample: "أودي A7" },
-        { code: "luxury_wagon", name: "ستيشن فاخرة جدًا", sample: "A6 أفانت 3.0" },
-        { code: "on_request", name: "فئات عليا (حسب الطلب)", sample: "S‑Class, A8, SQ7, Cayenne" }
-      ]},
-      { key: "ev", label: "كهربائية", categories: [
-        { code: "e_economy", name: "اقتصادي كهربائي", sample: "رينو 5 E‑Tech" },
-        { code: "e_compact", name: "كومباكت كهربائي", sample: "هيونداي كונה" },
-        { code: "e_intermediate", name: "متوسط كهربائي", sample: "سكودا إلروك" },
-        { code: "e_standard", name: "ستانדارد كهربائي", sample: "فולקס فאגן ID.7 تورר" },
-        { code: "e_luxury", name: "فخم كهربائي", sample: "أودي e‑tron" },
-        { code: "e_on_request", name: "فاخر كهربائي (حسب الطلب)", sample: "بورشه ماكان كهربائي" }
-      ]},
-      { key: "vans", label: "حافلات صغيرة", categories: [
-        { code: "van_standard", name: "قياسي (8–9 مقاعد)", sample: "فورد טרנזيت" },
-        { code: "van_elite", name: "إيليت قياسي (9 مقاعد)", sample: "مرسيدس فيتو" },
-        { code: "van_premium", name: "بريميום (7–8 مقاعد)", sample: "فولקס فאגן מולטיוואן / مرسيدس V‑Class" }
-      ]}
-    ]
-  }
-};
+      // Localized category names
+      const CAT = {
+        de:{mini:"Mini",economy:"Economy",compact:"Kompakt",compact_vw:"Kompakt VW",compact_suv:"Kompakt‑SUV",compact_wagon:"Kompakt Kombi",compact_elite:"Kompakt Elite",intermediate_suv:"Mittelklasse SUV",intermediate_sedan:"Mittelklasse Limousine",intermediate_wagon:"Mittelklasse Kombi",intermediate_van:"Mittelklasse Van",intermediate_elite:"Mittelklasse Elite",standard_wagon:"Standard Kombi",standard_suv:"Standard SUV",fullsize_sedan:"Full‑Size Limousine",fullsize_wagon:"Full‑Size Kombi",premium_suv:"Premium SUV",premium_wagon:"Premium Kombi",premium_sedan:"Premium Limousine",luxury_suv:"Luxus SUV",luxury_sedan:"Luxus Limousine",luxury_wagon:"Luxus Kombi",on_request:"High‑End (auf Anfrage)", e_economy:"E‑Economy",e_compact:"E‑Compact",e_intermediate:"E‑Intermediate",e_standard:"E‑Standard",e_luxury:"E‑Luxus",e_on_request:"E‑Premium (auf Anfrage)", van_standard:"Standard (8–9 Sitze)",van_elite:"Standard Elite (9 Sitze)",van_premium:"Premium (7–8 Sitze)"},
+        tr:{mini:"Mini",economy:"Ekonomi",compact:"Kompakt",compact_vw:"Kompakt VW",compact_suv:"Kompakt SUV",compact_wagon:"Kompakt Station",compact_elite:"Kompakt Elite",intermediate_suv:"Orta SUV",intermediate_sedan:"Orta Sedan",intermediate_wagon:"Orta Station",intermediate_van:"Orta Van",intermediate_elite:"Orta Elite",standard_wagon:"Standart Kombi",standard_suv:"Standart SUV",fullsize_sedan:"Full‑Size Sedan",fullsize_wagon:"Full‑Size Station",premium_suv:"Premium SUV",premium_wagon:"Premium Station",premium_sedan:"Premium Sedan",luxury_suv:"Lüks SUV",luxury_sedan:"Lüks Sedan",luxury_wagon:"Lüks Station",on_request:"Üst segment (talep üzerine)", e_economy:"E‑Ekonomi",e_compact:"E‑Kompakt",e_intermediate:"E‑Orta",e_standard:"E‑Standart",e_luxury:"E‑Lüks",e_on_request:"E‑Premium (talep üzerine)", van_standard:"Standart (8–9 koltuk)",van_elite:"Standart Elite (9)",van_premium:"Premium (7–8 koltuk)"},
+        en:{mini:"Mini",economy:"Economy",compact:"Compact",compact_vw:"Compact VW",compact_suv:"Compact SUV",compact_wagon:"Compact Wagon",compact_elite:"Compact Elite",intermediate_suv:"Intermediate SUV",intermediate_sedan:"Intermediate Sedan",intermediate_wagon:"Intermediate Wagon",intermediate_van:"Intermediate Van",intermediate_elite:"Intermediate Elite",standard_wagon:"Standard Wagon",standard_suv:"Standard SUV",fullsize_sedan:"Full‑Size Sedan",fullsize_wagon:"Full‑Size Wagon",premium_suv:"Premium SUV",premium_wagon:"Premium Wagon",premium_sedan:"Premium Sedan",luxury_suv:"Luxury SUV",luxury_sedan:"Luxury Sedan",luxury_wagon:"Luxury Wagon",on_request:"High‑end (on request)", e_economy:"EV Economy",e_compact:"EV Compact",e_intermediate:"EV Intermediate",e_standard:"EV Standard",e_luxury:"EV Luxury",e_on_request:"EV Premium (on request)", van_standard:"Standard (8–9 seats)",van_elite:"Standard Elite (9)",van_premium:"Premium (7–8)"},
+        es:{mini:"Mini",economy:"Económico",compact:"Compacto",compact_vw:"Compacto VW",compact_suv:"SUV compacto",compact_wagon:"Familiar compacto",compact_elite:"Compacto élite",intermediate_suv:"SUV intermedio",intermediate_sedan:"Sedán intermedio",intermediate_wagon:"Familiar intermedio",intermediate_van:"Monovolumen intermedio",intermediate_elite:"Intermedio élite",standard_wagon:"Familiar estándar",standard_suv:"SUV estándar",fullsize_sedan:"Sedán full‑size",fullsize_wagon:"Familiar full‑size",premium_suv:"SUV premium",premium_wagon:"Familiar premium",premium_sedan:"Sedán premium",luxury_suv:"SUV lujo",luxury_sedan:"Sedán lujo",luxury_wagon:"Familiar lujo",on_request:"Alta gama (a petición)", e_economy:"EV económico",e_compact:"EV compacto",e_intermediate:"EV intermedio",e_standard:"EV estándar",e_luxury:"EV lujo",e_on_request:"EV premium (a petición)", van_standard:"Estándar (8–9 plazas)",van_elite:"Estándar élite (9)",van_premium:"Premium (7–8)"},
+        fr:{mini:"Mini",economy:"Économique",compact:"Compacte",compact_vw:"Compacte VW",compact_suv:"SUV compact",compact_wagon:"Break compact",compact_elite:"Compacte élite",intermediate_suv:"SUV intermédiaire",intermediate_sedan:"Berline intermédiaire",intermediate_wagon:"Break intermédiaire",intermediate_van:"Monospace intermédiaire",intermediate_elite:"Intermédiaire élite",standard_wagon:"Break standard",standard_suv:"SUV standard",fullsize_sedan:"Berline full‑size",fullsize_wagon:"Break full‑size",premium_suv:"SUV premium",premium_wagon:"Break premium",premium_sedan:"Berline premium",luxury_suv:"SUV luxe",luxury_sedan:"Berline luxe",luxury_wagon:"Break luxe",on_request:"Haut de gamme (sur demande)", e_economy:"EV économique",e_compact:"EV compact",e_intermediate:"EV intermédiaire",e_standard:"EV standard",e_luxury:"EV luxe",e_on_request:"EV premium (sur demande)", van_standard:"Standard (8–9 places)",van_elite:"Standard élite (9)",van_premium:"Premium (7–8)"},
+        it:{mini:"Mini",economy:"Economy",compact:"Compatta",compact_vw:"Compatta VW",compact_suv:"SUV compatto",compact_wagon:"Station compatta",compact_elite:"Compatta élite",intermediate_suv:"SUV intermedia",intermediate_sedan:"Berlina intermedia",intermediate_wagon:"Station intermedia",intermediate_van:"Monovolume intermedio",intermediate_elite:"Intermedia élite",standard_wagon:"Station standard",standard_suv:"SUV standard",fullsize_sedan:"Berlina full‑size",fullsize_wagon:"Station full‑size",premium_suv:"SUV premium",premium_wagon:"Station premium",premium_sedan:"Berlina premium",luxury_suv:"SUV lusso",luxury_sedan:"Berlina lusso",luxury_wagon:"Station lusso",on_request:"Top di gamma (su richiesta)", e_economy:"EV economy",e_compact:"EV compatta",e_intermediate:"EV intermedia",e_standard:"EV standard",e_luxury:"EV lusso",e_on_request:"EV premium (su richiesta)", van_standard:"Standard (8–9 posti)",van_elite:"Standard élite (9)",van_premium:"Premium (7–8)"},
+        pt:{mini:"Mini",economy:"Económico",compact:"Compacto",compact_vw:"Compacto VW",compact_suv:"SUV compacto",compact_wagon:"Carrinha compacta",compact_elite:"Compacto elite",intermediate_suv:"SUV intermédio",intermediate_sedan:"Sedan intermédio",intermediate_wagon:"Carrinha intermédia",intermediate_van:"Monovolume interm.",intermediate_elite:"Intermédio elite",standard_wagon:"Carrinha standard",standard_suv:"SUV standard",fullsize_sedan:"Sedan full‑size",fullsize_wagon:"Carrinha full‑size",premium_suv:"SUV premium",premium_wagon:"Carrinha premium",premium_sedan:"Sedan premium",luxury_suv:"SUV luxo",luxury_sedan:"Sedan luxo",luxury_wagon:"Carrinha luxo",on_request:"Topo de gama (a pedido)", e_economy:"EV económico",e_compact:"EV compacto",e_intermediate:"EV intermédio",e_standard:"EV standard",e_luxury:"EV luxo",e_on_request:"EV premium (a pedido)", van_standard:"Standard (8–9)",van_elite:"Standard elite (9)",van_premium:"Premium (7–8)"},
+        nl:{mini:"Mini",economy:"Economy",compact:"Compact",compact_vw:"Compact VW",compact_suv:"Compact SUV",compact_wagon:"Compact station",compact_elite:"Compact elite",intermediate_suv:"Middenklasse SUV",intermediate_sedan:"Middenklasse sedan",intermediate_wagon:"Middenklasse station",intermediate_van:"Middenklasse van",intermediate_elite:"Middenklasse elite",standard_wagon:"Standaard station",standard_suv:"Standaard SUV",fullsize_sedan:"Full‑size sedan",fullsize_wagon:"Full‑size station",premium_suv:"Premium SUV",premium_wagon:"Premium station",premium_sedan:"Premium sedan",luxury_suv:"Luxe SUV",luxury_sedan:"Luxe sedan",luxury_wagon:"Luxe station",on_request:"High‑end (op aanvraag)", e_economy:"EV economy",e_compact:"EV compact",e_intermediate:"EV midden",e_standard:"EV standaard",e_luxury:"EV luxe",e_on_request:"EV premium (op aanvraag)", van_standard:"Standaard (8–9)",van_elite:"Standaard elite (9)",van_premium:"Premium (7–8)"},
+        pl:{mini:"Mini",economy:"Economy",compact:"Kompakt",compact_vw:"Kompakt VW",compact_suv:"SUV kompaktowy",compact_wagon:"Kombi kompaktowe",compact_elite:"Kompakt elite",intermediate_suv:"SUV średni",intermediate_sedan:"Sedan średni",intermediate_wagon:"Kombi średnie",intermediate_van:"Van średni",intermediate_elite:"Średni elite",standard_wagon:"Kombi standard",standard_suv:"SUV standard",fullsize_sedan:"Sedan full‑size",fullsize_wagon:"Kombi full‑size",premium_suv:"SUV premium",premium_wagon:"Kombi premium",premium_sedan:"Sedan premium",luxury_suv:"SUV luksus",luxury_sedan:"Sedan luksus",luxury_wagon:"Kombi luksus",on_request:"Wysoka półka (na żądanie)", e_economy:"EV economy",e_compact:"EV kompakt",e_intermediate:"EV średni",e_standard:"EV standard",e_luxury:"EV luksus",e_on_request:"EV premium (na żądanie)", van_standard:"Standard (8–9)",van_elite:"Standard elite (9)",van_premium:"Premium (7–8)"},
+        el:{mini:"Μίνι",economy:"Οικονομικό",compact:"Κομπακτ",compact_vw:"Κομπακτ VW",compact_suv:"SUV κομπακτ",compact_wagon:"Στέισον κομπακτ",compact_elite:"Κομπακτ elite",intermediate_suv:"SUV μεσαίο",intermediate_sedan:"Σεντάν μεσαίο",intermediate_wagon:"Στέισον μεσαίο",intermediate_van:"Βαν μεσαίο",intermediate_elite:"Μεσαίο elite",standard_wagon:"Στέισον στάνταρ",standard_suv:"SUV στάνταρ",fullsize_sedan:"Σεντάν full‑size",fullsize_wagon:"Στέισον full‑size",premium_suv:"SUV premium",premium_wagon:"Στέισον premium",premium_sedan:"Σεντάν premium",luxury_suv:"SUV πολυτελείας",luxury_sedan:"Σεντάν πολυτελείας",luxury_wagon:"Στέισον πολυτελείας",on_request:"Υψηλή κατηγ. (κατ’ αίτημα)", e_economy:"EV οικονομικό",e_compact:"EV κομπακτ",e_intermediate:"EV μεσαίο",e_standard:"EV στάνταρ",e_luxury:"EV πολυτελείας",e_on_request:"EV premium (κατ’ αίτημα)", van_standard:"Στάνταρ (8–9)",van_elite:"Στάνταρ elite (9)",van_premium:"Premium (7–8)"},
+        ru:{mini:"Мини",economy:"Эконом",compact:"Компакт",compact_vw:"Компакт VW",compact_suv:"Компакт SUV",compact_wagon:"Компакт универсал",compact_elite:"Компакт элит",intermediate_suv:"Средний SUV",intermediate_sedan:"Средний седан",intermediate_wagon:"Средний универсал",intermediate_van:"Средний вэн",intermediate_elite:"Средний элит",standard_wagon:"Стандарт универсал",standard_suv:"Стандарт SUV",fullsize_sedan:"Седан full‑size",fullsize_wagon:"Универсал full‑size",premium_suv:"Премиум SUV",premium_wagon:"Премиум универсал",premium_sedan:"Премиум седан",luxury_suv:"Роскошный SUV",luxury_sedan:"Роскошный седан",luxury_wagon:"Роскошный универсал",on_request:"High‑end (по запросу)", e_economy:"EV эконом",e_compact:"EV компакт",e_intermediate:"EV средний",e_standard:"EV стандарт",e_luxury:"EV люкс",e_on_request:"EV премиум (по запросу)", van_standard:"Стандарт (8–9)",van_elite:"Стандарт элит (9)",van_premium:"Премиум (7–8)"}
+      };
 
-// Fallback getters ------------------------------------------------------------
-function getDict(lang: string) { return t[lang] ? { ...t.en, ...t[lang] } : t.en; }
-function getFleet(lang: string) { return FLEET[lang] || FLEET.en; }
+      const IMG = {
+        mini:"https://source.unsplash.com/1200x800/?small,city,car",
+        economy:"https://source.unsplash.com/1200x800/?compact,hatchback,car",
+        compact:"https://source.unsplash.com/1200x800/?karoq,car",
+        compact_vw:"https://source.unsplash.com/1200x800/?golf,car",
+        compact_suv:"https://source.unsplash.com/1200x800/?small,suv",
+        compact_wagon:"https://source.unsplash.com/1200x800/?wagon,car",
+        compact_elite:"https://source.unsplash.com/1200x800/?audi,a3",
+        intermediate_suv:"https://source.unsplash.com/1200x800/?karoq,suv",
+        intermediate_sedan:"https://source.unsplash.com/1200x800/?peugeot,408",
+        intermediate_wagon:"https://source.unsplash.com/1200x800/?octavia,wagon",
+        intermediate_van:"https://source.unsplash.com/1200x800/?vw,touran",
+        intermediate_elite:"https://source.unsplash.com/1200x800/?audi,q3",
+        standard_wagon:"https://source.unsplash.com/1200x800/?superb,wagon",
+        standard_suv:"https://source.unsplash.com/1200x800/?vw,tayron",
+        fullsize_sedan:"https://source.unsplash.com/1200x800/?audi,a5",
+        fullsize_wagon:"https://source.unsplash.com/1200x800/?audi,a5,avant",
+        premium_suv:"https://source.unsplash.com/1200x800/?audi,q5",
+        premium_wagon:"https://source.unsplash.com/1200x800/?audi,a6,avant",
+        premium_sedan:"https://source.unsplash.com/1200x800/?audi,a6",
+        luxury_suv:"https://source.unsplash.com/1200x800/?touareg,suv",
+        luxury_sedan:"https://source.unsplash.com/1200x800/?audi,a7",
+        luxury_wagon:"https://source.unsplash.com/1200x800/?wagon,luxury",
+        on_request:"https://source.unsplash.com/1200x800/?luxury,car",
+        e_economy:"https://source.unsplash.com/1200x800/?ev,city,car",
+        e_compact:"https://source.unsplash.com/1200x800/?electric,compact,car",
+        e_intermediate:"https://source.unsplash.com/1200x800/?electric,car",
+        e_standard:"https://source.unsplash.com/1200x800/?electric,station,wagon",
+        e_luxury:"https://source.unsplash.com/1200x800/?electric,luxury",
+        e_on_request:"https://source.unsplash.com/1200x800/?porsche,macan,electric",
+        van_standard:"https://source.unsplash.com/1200x800/?ford,transit",
+        van_elite:"https://source.unsplash.com/1200x800/?mercedes,vito",
+        van_premium:"https://source.unsplash.com/1200x800/?vw,multivan"
+      };
 
-// Image mapping (replace with your /images/*.jpg later)
-const CATEGORY_IMAGE_SRC: Record<string, string> = {
-  mini: "https://source.unsplash.com/1200x800/?small,city,car",
-  economy: "https://source.unsplash.com/1200x800/?compact,hatchback,car",
-  compact: "https://source.unsplash.com/1200x800/?skoda,car",
-  compact_vw: "https://source.unsplash.com/1200x800/?golf,car",
-  compact_suv: "https://source.unsplash.com/1200x800/?small,suv",
-  compact_wagon: "https://source.unsplash.com/1200x800/?wagon,car",
-  compact_elite: "https://source.unsplash.com/1200x800/?audi,a3",
-  intermediate_suv: "https://source.unsplash.com/1200x800/?karoq,suv",
-  intermediate_sedan: "https://source.unsplash.com/1200x800/?peugeot,408",
-  intermediate_wagon: "https://source.unsplash.com/1200x800/?octavia,wagon",
-  intermediate_van: "https://source.unsplash.com/1200x800/?vw,touran",
-  intermediate_elite: "https://source.unsplash.com/1200x800/?audi,q3",
-  standard_wagon: "https://source.unsplash.com/1200x800/?superb,wagon",
-  standard_suv: "https://source.unsplash.com/1200x800/?vw,tayron",
-  fullsize_sedan: "https://source.unsplash.com/1200x800/?audi,a5",
-  fullsize_wagon: "https://source.unsplash.com/1200x800/?audi,a5,avant",
-  premium_suv: "https://source.unsplash.com/1200x800/?audi,q5",
-  premium_wagon: "https://source.unsplash.com/1200x800/?audi,a6,avant",
-  premium_sedan: "https://source.unsplash.com/1200x800/?audi,a6",
-  luxury_suv: "https://source.unsplash.com/1200x800/?touareg,suv",
-  luxury_sedan: "https://source.unsplash.com/1200x800/?audi,a7",
-  luxury_wagon: "https://source.unsplash.com/1200x800/?wagon,luxury",
-  on_request: "https://source.unsplash.com/1200x800/?luxury,car",
-  e_economy: "https://source.unsplash.com/1200x800/?renault,electric",
-  e_compact: "https://source.unsplash.com/1200x800/?hyundai,kona",
-  e_intermediate: "https://source.unsplash.com/1200x800/?skoda,elroq",
-  e_standard: "https://source.unsplash.com/1200x800/?vw,id7",
-  e_luxury: "https://source.unsplash.com/1200x800/?audi,etron",
-  e_on_request: "https://source.unsplash.com/1200x800/?porsche,macan,electric",
-  van_standard: "https://source.unsplash.com/1200x800/?ford,transit",
-  van_elite: "https://source.unsplash.com/1200x800/?mercedes,vito",
-  van_premium: "https://source.unsplash.com/1200x800/?vw,multivan"
-};
+      function cls(...c){return c.filter(Boolean).join(" ");}
+      function extrasLine(lang){
+        return lang==='de'? 'All‑Inclusive: Premium‑Schutz inklusive. Weitere Extras auf Anfrage: Kindersitz, Diesel‑Garantie, 2. Fahrer, Grenzübertritt.'
+          : lang==='tr'? 'Her şey dâhil: Premium koruma dâhildir. Diğer ekstralar talep üzerine.'
+          : lang==='ar'? 'كلّ شامل: الحماية المميزة متضمّنة. إضافات أخرى عند الطلب.'
+          : lang==='he'? 'הכול כלול: כיסוי פרימיום כלול. תוספות לפי בקשה.'
+          : lang==='es'? 'Todo incluido: protección premium incluida. Extras a petición.'
+          : lang==='fr'? 'Tout compris : protection premium incluse. Extras sur demande.'
+          : lang==='it'? 'Tutto incluso: protezione premium inclusa. Extra su richiesta.'
+          : lang==='pt'? 'Tudo incluído: proteção premium incluída. Extras sob pedido.'
+          : lang==='nl'? 'All‑inclusive: premiumbescherming inbegrepen. Extra’s op aanvraag.'
+          : lang==='pl'? 'Wszystko w cenie: ochrona premium wliczona. Dodatki na życzenie.'
+          : lang==='el'? 'All‑inclusive: περιλαμβάνει premium κάλυψη. Επιπλέον κατόπιν αιτήματος.'
+          : lang==='ru'? 'Всё включено: премиум‑защита включена. Прочие опции по запросу.'
+          : 'All‑inclusive: premium protection included.';
+      }
 
-function extrasLine(lang: string) {
-  return lang === "de"
-    ? "All‑Inclusive: Premium‑Schutz inklusive. Weitere Extras auf Anfrage: Kindersitz, Diesel‑Garantie, 2. Fahrer, Grenzübertritt."
-    : lang === "tr"
-    ? "Her şey dâhil: Premium koruma dâhildir. Diğer ekstralar talep üzerine: çocuk koltuğu, dizel garantisi, 2. sürücü, sınır geçişi."
-    : lang === "ar"
-    ? "كلّ شامل: حماية مميزة متضمنة. إضافات أخرى عند الطلب: مقعد أطفال، ضمان الديزل، سائق ثانٍ، عبور حدود."
-    : lang === "he"
-    ? "הכול כלול: כיסוי פרימיום כלול. תוספות נוספות לפי בקשה: כיסא תינוק, אחריות דיזל, נהג שני, חציית גבול."
-    : "All‑inclusive: premium protection included. Other extras on request: child seat, diesel guarantee, 2nd driver, cross‑border.";
-}
-
-// --- Tiny runtime checks (non-fatal) ----------------------------------------
-try {
-  console.assert(/^\+?\d+$/.test(WA_NUMBER), "WA_NUMBER format unexpected");
-  console.assert(WA_LINK.includes("wa.me/"), "WA_LINK not built");
-  console.assert(["a","b"].join("\n").includes("\n"), "newline join failed");
-} catch (e) { /* ignore in production */ }
-
-// --- UI Components -----------------------------------------------------------
-function OrangeButton(props: { children: any; href?: string; onClick?: () => void }) {
-  const { children, href, onClick } = props;
-  const clsBtn = "inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold bg-orange-500 text-white shadow hover:bg-orange-600 transition";
-  return href ? <a href={href} className={clsBtn}>{children}</a> : <button onClick={onClick} className={clsBtn}>{children}</button>;
-}
-function GhostButton(props: { children: any; href?: string }) {
-  const { children, href } = props;
-  return <a href={href} className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold border border-white/30 text-white hover:bg-white/10 transition">{children}</a>;
-}
-function Section(props: { id?: string; className?: string; children: any }) {
-  const { id, className, children } = props;
-  return <section id={id} className={cls("py-14 md:py-20", className)}><div className="max-w-6xl mx-auto px-4 md:px-6">{children}</div></section>;
-}
-
-function CategoryGrid({ dict, lang }: { dict: any; lang: string }) {
-  const orSimilar = dict.orSimilar || "or similar";
-  const optionsLine = lang === "de" ? "Optionen auf Anfrage" : lang === "tr" ? "Seçenekler talep üzerine" : lang === "ar" ? "خيارات عند الطلب" : lang === "he" ? "אפשרויות לפי בקשה" : "Options on request";
-  const items = (dict.categories || []) as { code: string; name: string; sample: string }[];
-  return (
-    <div className="grid md:grid-cols-2 gap-6">
-      {items.map((c) => {
-        const src = CATEGORY_IMAGE_SRC[c.code] || CATEGORY_IMAGE_SRC["compact"];
+      function CategoryGrid({lang, groupKey}){
+        const dict = I18N[lang];
+        const orSimilar = dict.orSimilar;
+        const items = CODES[groupKey];
         return (
-          <div key={c.code} className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70">
-            <img src={src} alt={c.name + " example"} loading="lazy" className="w-full h-44 sm:h-56 object-cover rounded-b-2xl" />
-            <div className="p-5">
-              <div className="text-lg font-semibold">{c.name}</div>
-              <div className="text-white/70 text-sm mt-1">{optionsLine}</div>
-              <div className="text-white/80 text-sm mt-2"><span className="font-medium">{c.sample}</span> — {c.name} ({orSimilar})</div>
-              <div className="text-xs text-white/50 mt-2">{extrasLine(lang)}</div>
-              <div className="mt-4"><OrangeButton href="#book">{(getDict(lang) || {}).nav?.book || "Book"}</OrangeButton></div>
-            </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {items.map(([code, sample])=>{
+              const name = (CAT[lang] && CAT[lang][code]) || CAT.en[code] || code;
+              const src = IMG[code] || IMG.compact;
+              return (
+                <div key={code} className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70">
+                  <img src={src} alt={`${name} example`} loading="lazy" className="w-full h-44 sm:h-56 object-cover rounded-b-2xl"/>
+                  <div className="p-5">
+                    <div className="text-lg font-semibold">{name}</div>
+                    <div className="text-white/80 text-sm mt-2"><span className="font-medium">{sample}</span> — {name} ({orSimilar})</div>
+                    <div className="text-xs text-white/50 mt-2">{extrasLine(lang)}</div>
+                    <div className="mt-4"><a href="#book" className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold bg-orange-500 text-white shadow hover:bg-orange-600 transition">{dict.nav.book}</a></div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         );
-      })}
-    </div>
-  );
-}
+      }
 
-function BookingForm({ dict, lang }: { dict: any; lang: string }) {
-  const [submitted, setSubmitted] = React.useState(false);
-  const [sending, setSending] = React.useState(false);
-  const [form, setForm] = React.useState({ name: "", phone: "", pickup: "", dropoff: "", pickDate: "", pickTime: "", dropDate: "", dropTime: "", category: "", notes: "" });
-  const on = (k: keyof typeof form) => (e: any) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const sameDay = React.useMemo(() => form.pickDate && form.dropDate && form.pickDate === form.dropDate, [form.pickDate, form.dropDate]);
+      function parseDT(date, time){ if(!date) return null; const t0 = time || '00:00'; const d = new Date(`${date}T${t0}`); return isNaN(+d)?null:d; }
 
-  async function onSubmit(e: any) {
-    e.preventDefault();
-    const requiredKeys: (keyof typeof form)[] = ["name", "phone", "pickup", "dropoff", "pickDate", "pickTime", "dropDate", "dropTime", "category"];
-    for (const k of requiredKeys) { if (!form[k]) { alert(lang === "de" ? "Bitte alle Pflichtfelder ausfüllen." : lang === "tr" ? "Lütfen tüm zorunlu alanları doldurun." : lang === "ar" ? "يرجى تعبئة جميع الحقول المطلوبة." : lang === "he" ? "נא למלא את כל השדות החובה." : "Please fill all required fields."); return; } }
-    const start = parseDT(form.pickDate, form.pickTime);
-    const end = parseDT(form.dropDate, form.dropTime);
-    if (!start || !end || end <= start) {
-      alert(
-        lang === "de" ? "Rückgabe muss nach der Abholung liegen." :
-        lang === "tr" ? "Teslim tarihi/saati, alıştan sonra olmalı." :
-        lang === "ar" ? "وقت/تاريخ التسليم يجب أن يكون بعد الاستلام." :
-        lang === "he" ? "ההחזרה חייבת להיות אחרי האיסוף." :
-        "Drop-off must be after pick-up."
-      );
-      return;
-    }
-    setSending(true);
-    try {
-      const msg = [
-        "🆕 New booking request",
-        "Lang: " + lang.toUpperCase(),
-        "Name: " + form.name,
-        "WhatsApp: " + form.phone,
-        "Route: " + form.pickup + " → " + form.dropoff,
-        "Pickup: " + form.pickDate + " " + form.pickTime,
-        "Dropoff: " + form.dropDate + " " + form.dropTime,
-        "Category: " + form.category,
-        "Notes: " + (form.notes || "-")
-      ].join("\n");
-      console.log("Payload for WhatsApp:", { to: WA_NUMBER, message: msg, lang, fields: form });
-      setSubmitted(true);
-      setForm({ name: "", phone: "", pickup: "", dropoff: "", pickDate: "", pickTime: "", dropDate: "", dropTime: "", category: "", notes: "" });
-    } catch (err) {
-      console.error(err);
-      alert(lang === "de" ? "Fehler beim Senden." : lang === "tr" ? "Gönderim hatası." : lang === "ar" ? "فشل الإرسال." : lang === "he" ? "שליחה נכשלה." : "Failed to send.");
-    } finally { setSending(false); }
-  }
+      function BookingForm({lang}){
+        const dict = I18N[lang];
+        const [submitted,setSubmitted] = useState(false);
+        const [sending,setSending] = useState(false);
+        const [form,setForm] = useState({name:"",phone:"",pickup:"",dropoff:"",pickDate:"",pickTime:"",dropDate:"",dropTime:"",category:"",notes:""});
+        const on = (k)=> (e)=> setForm(f=>({...f,[k]:e.target.value}));
+        const sameDay = useMemo(()=> form.pickDate && form.dropDate && form.pickDate===form.dropDate,[form.pickDate,form.dropDate]);
 
-  if (submitted) {
-    return (
-      <div className="rounded-3xl bg-slate-900/70 border border-white/10 p-8 text-center mb-24">
-        <h3 className="text-2xl font-bold mb-2">{dict.thankTitle || "Danke!"}</h3>
-        <p className="text-white/70 mb-6">{dict.thankDesc || "We will contact you shortly."}</p>
-        <div className="flex items-center justify-center gap-3">
-          <OrangeButton href={WA_LINK}>WhatsApp</OrangeButton>
-          <GhostButton href="#fleet">{dict.ctaSecondary}</GhostButton>
-        </div>
-      </div>
-    );
-  }
+        const labels = {
+          de:{name:"Name",phone:"WhatsApp‑Nummer",pickup:"Abholort",dropoff:"Rückgabeort",pickDate:"Abholdatum",pickTime:"Abholzeit",dropDate:"Rückgabedatum",dropTime:"Rückgabezeit",category:"Kategorie",notes:"Notizen (Wunsch/Flugnr.)",submit:"Senden"},
+          tr:{name:"Ad Soyad",phone:"WhatsApp numarası",pickup:"Alış konumu",dropoff:"Teslim konumu",pickDate:"Alış tarihi",pickTime:"Alış saati",dropDate:"Teslim tarihi",dropTime:"Teslim saati",category:"Kategori",notes:"Notlar (tercih/uçuş no)",submit:"Gönder"},
+          en:{name:"Full name",phone:"WhatsApp number",pickup:"Pick‑up location",dropoff:"Drop‑off location",pickDate:"Pick‑up date",pickTime:"Pick‑up time",dropDate:"Drop‑off date",dropTime:"Drop‑off time",category:"Category",notes:"Notes (pref./flight no.)",submit:"Send"},
+          ar:{name:"الاسم الكامل",phone:"رقم واتساب",pickup:"موقع الاستلام",dropoff:"موقع التسليم",pickDate:"تاريخ الاستلام",pickTime:"وقت الاستلام",dropDate:"تاريخ التسليم",dropTime:"وقت التسليم",category:"الفئة",notes:"ملاحظات",submit:"إرسال"},
+          he:{name:"שם מלא",phone:"מספר WhatsApp",pickup:"מקום איסוף",dropoff:"מקום החזרה",pickDate:"תאריך איסוף",pickTime:"שעת איסוף",dropDate:"תאריך החזרה",dropTime:"שעת החזרה",category:"קטגוריה",notes:"הערות",submit:"שלח"},
+          es:{name:"Nombre completo",phone:"WhatsApp",pickup:"Lugar de recogida",dropoff:"Lugar de devolución",pickDate:"Fecha de recogida",pickTime:"Hora de recogida",dropDate:"Fecha de devolución",dropTime:"Hora de devolución",category:"Categoría",notes:"Notas",submit:"Enviar"},
+          fr:{name:"Nom complet",phone:"WhatsApp",pickup:"Lieu de prise",dropoff:"Lieu de retour",pickDate:"Date de prise",pickTime:"Heure de prise",dropDate:"Date de retour",dropTime:"Heure de retour",category:"Catégorie",notes:"Notes",submit:"Envoyer"},
+          it:{name:"Nome completo",phone:"WhatsApp",pickup:"Luogo ritiro",dropoff:"Luogo riconsegna",pickDate:"Data ritiro",pickTime:"Ora ritiro",dropDate:"Data riconsegna",dropTime:"Ora riconsegna",category:"Categoria",notes:"Note",submit:"Invia"},
+          pt:{name:"Nome completo",phone:"WhatsApp",pickup:"Local de levantamento",dropoff:"Local de devolução",pickDate:"Data de levantamento",pickTime:"Hora de levantamento",dropDate:"Data de devolução",dropTime:"Hora de devolução",category:"Categoria",notes:"Notas",submit:"Enviar"},
+          nl:{name:"Volledige naam",phone:"WhatsApp",pickup:"Ophaallocatie",dropoff:"Inleverlocatie",pickDate:"Datum ophaal",pickTime:"Tijd ophaal",dropDate:"Datum inlever",dropTime:"Tijd inlever",category:"Categorie",notes:"Notities",submit:"Verzenden"},
+          pl:{name:"Imię i nazwisko",phone:"WhatsApp",pickup:"Miejsce odbioru",dropoff:"Miejsce zwrotu",pickDate:"Data odbioru",pickTime:"Godzina odbioru",dropDate:"Data zwrotu",dropTime:"Godzina zwrotu",category:"Kategoria",notes:"Uwagi",submit:"Wyślij"},
+          el:{name:"Ονοματεπώνυμο",phone:"WhatsApp",pickup:"Σημείο παραλαβής",dropoff:"Σημείο επιστροφής",pickDate:"Ημ/νία παραλαβής",pickTime:"Ώρα παραλαβής",dropDate:"Ημ/νία επιστροφής",dropTime:"Ώρα επιστροφής",category:"Κατηγορία",notes:"Σημειώσεις",submit:"Αποστολή"},
+          ru:{name:"ФИО",phone:"WhatsApp",pickup:"Место выдачи",dropoff:"Место возврата",pickDate:"Дата выдачи",pickTime:"Время выдачи",dropDate:"Дата возврата",dropTime:"Время возврата",category:"Категория",notes:"Примечания",submit:"Отправить"}
+        }[lang];
 
-  const labels = ({
-    tr: { name: "Ad Soyad", phone: "WhatsApp numarası", pickup: "Alış konumu", dropoff: "Teslim konumu", pickDate: "Alış tarihi", pickTime: "Alış saati", dropDate: "Teslim tarihi", dropTime: "Teslim saati", category: "Kategori", notes: "Notlar (araç tercihi/uçuş no)", submit: "Gönder" },
-    de: { name: "Name", phone: "WhatsApp-Nummer", pickup: "Abholort", dropoff: "Rückgabeort", pickDate: "Abholdatum", pickTime: "Abholzeit", dropDate: "Rückgabedatum", dropTime: "Rückgabezeit", category: "Kategorie", notes: "Notizen (Fahrzeugwunsch/Flugnr.)", submit: "Senden" },
-    en: { name: "Full name", phone: "WhatsApp number", pickup: "Pick-up location", dropoff: "Drop-off location", pickDate: "Pick-up date", pickTime: "Pick-up time", dropDate: "Drop-off date", dropTime: "Drop-off time", category: "Category", notes: "Notes (car pref./flight no.)", submit: "Send" },
-    ar: { name: "الاسم الكامل", phone: "رقم واتساب", pickup: "موقع الاستلام", dropoff: "موقع التسليم", pickDate: "تاريخ الاستلام", pickTime: "وقت الاستلام", dropDate: "تاريخ التسليم", dropTime: "وقت التسليم", category: "الفئة", notes: "ملاحظات (تفضيل/رقم الرحلة)", submit: "إرسال" },
-    he: { name: "שם מלא", phone: "מספר WhatsApp", pickup: "מיקום איסוף", dropoff: "מיקום החזרה", pickDate: "תאריך איסוף", pickTime: "שעת איסוף", dropDate: "תאריך החזרה", dropTime: "שעת החזרה", category: "קטגוריה", notes: "הערות (העדפת רכב/מס' טיסה)", submit: "שלח" }
-  } as any)[lang] || ({ ...({} as any), ...({} as any), ...({} as any), ...({} as any), ...({} as any), ...({ en: {} } as any) } as any).en;
+        async function onSubmit(e){
+          e.preventDefault();
+          const required = ['name','phone','pickup','dropoff','pickDate','pickTime','dropDate','dropTime','category'];
+          for(const k of required){ if(!form[k]){ alert(lang==='de'? 'Bitte alle Pflichtfelder ausfüllen.' : lang==='tr'? 'Lütfen tüm zorunlu alanları doldurun.' : lang==='ar'? 'يرجى تعبئة جميع الحقول المطلوبة.' : lang==='he'? 'נא למלא את כל שדות החובה.' : lang==='es'? 'Rellena todos los campos obligatorios.' : lang==='fr'? 'Veuillez remplir tous les champs obligatoires.' : lang==='it'? 'Compila tutti i campi obbligatori.' : lang==='pt'? 'Preencha todos os campos obrigatórios.' : lang==='nl'? 'Vul alle verplichte velden in.' : lang==='pl'? 'Wypełnij wszystkie wymagane pola.' : lang==='el'? 'Συμπληρώστε όλα τα υποχρεωτικά πεδία.' : lang==='ru'? 'Заполните все обязательные поля.' : 'Please fill all required fields.'); return; } }
+          const start=parseDT(form.pickDate,form.pickTime); const end=parseDT(form.dropDate,form.dropTime);
+          if(!start||!end||end<=start){ alert(lang==='de'? 'Rückgabe muss nach der Abholung liegen.' : lang==='tr'? 'Teslim tarihi/saatı, alıştan sonra olmalı.' : lang==='ar'? 'وقت/تاريخ التسليم يجب أن يكون بعد الاستلام.' : lang==='he'? 'ההחזרה חייבת להיות אחרי האיסוף.' : lang==='es'? 'La devolución debe ser después de la recogida.' : lang==='fr'? 'Le retour doit être après la prise en charge.' : lang==='it'? 'La riconsegna deve essere dopo il ritiro.' : lang==='pt'? 'A devolução deve ser após a recolha.' : lang==='nl'? 'Inleveren moet na ophalen zijn.' : lang==='pl'? 'Zwrot musi być po odbiorze.' : lang==='el'? 'Η επιστροφή πρέπει να είναι μετά την παραλαβή.' : lang==='ru'? 'Возврат должен быть после выдачи.' : 'Drop-off must be after pick-up.'); return; }
+          setSending(true);
+          try{
+            const msg = [
+              '🆕 New booking request',
+              'Lang: '+lang.toUpperCase(),
+              'Name: '+form.name,
+              'WhatsApp: '+form.phone,
+              'Route: '+form.pickup+' → '+form.dropoff,
+              'Pickup: '+form.pickDate+' '+form.pickTime,
+              'Dropoff: '+form.dropDate+' '+form.dropTime,
+              'Category: '+form.category,
+              'Notes: '+(form.notes||'-')
+            ].join('\n');
+            console.log('Payload for WhatsApp:', {to:WA_NUMBER, message:msg});
+            setSubmitted(true);
+            setForm({name:"",phone:"",pickup:"",dropoff:"",pickDate:"",pickTime:"",dropDate:"",dropTime:"",category:"",notes:""});
+          }catch(err){ console.error(err); alert(lang==='de'? 'Fehler beim Senden.' : lang==='tr'? 'Gönderim hatası.' : lang==='ar'? 'فشل الإرسال.' : lang==='he'? 'שליחה נכשלה.' : 'Failed to send.'); }
+          finally{ setSending(false); }
+        }
 
-  const labelCls = "text-sm text-white/70 mb-1";
-  const boxCls = "bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full";
-
-  return (
-    <form onSubmit={onSubmit} className="rounded-3xl bg-slate-900/70 border border-white/10 p-6 md:p-8 mb-24">
-      <h3 className="text-xl md:text-2xl font-bold mb-1">{dict.nav?.book || "Booking"}</h3>
-      <p className="text-white/70 mb-6">{dict.heroSub}</p>
-      <div className="grid md:grid-cols-2 gap-4">
-        <div><div className={labelCls}>{labels.name}</div><input required className={boxCls} placeholder={labels.name} autoComplete="name" value={form.name} onChange={on("name")} /></div>
-        <div><div className={labelCls}>{labels.phone}</div><input required className={boxCls} type="tel" inputMode="tel" autoComplete="tel" placeholder={labels.phone} value={form.phone} onChange={on("phone")} /></div>
-        <div><div className={labelCls}>{labels.pickup}</div><input required className={boxCls} placeholder={labels.pickup} value={form.pickup} onChange={on("pickup")} /></div>
-        <div><div className={labelCls}>{labels.dropoff}</div><input required className={boxCls} placeholder={labels.dropoff} value={form.dropoff} onChange={on("dropoff")} /></div>
-        <div><div className={labelCls}>{labels.pickDate}</div><input required type="date" className={boxCls} value={form.pickDate} onChange={on("pickDate")} /></div>
-        <div><div className={labelCls}>{labels.pickTime}</div><input required type="time" className={boxCls} value={form.pickTime} onChange={on("pickTime")} /></div>
-        <div><div className={labelCls}>{labels.dropDate}</div><input required type="date" className={boxCls} min={form.pickDate || ""} value={form.dropDate} onChange={on("dropDate")} /></div>
-        <div><div className={labelCls}>{labels.dropTime}</div><input required type="time" className={boxCls} min={sameDay ? (form.pickTime || "") : ""} value={form.dropTime} onChange={on("dropTime")} /></div>
-        <div className="md:col-span-2"><div className={labelCls}>{labels.category}</div>
-          <select required className={boxCls} value={form.category} onChange={on("category")}>
-            <option value="">—</option>
-            {getFleet(lang).groups.flatMap(g => g.categories).map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-          </select>
-        </div>
-        <div className="md:col-span-2"><div className={labelCls}>{labels.notes}</div><input className={boxCls} placeholder={labels.notes} value={form.notes} onChange={on("notes")} /></div>
-      </div>
-      <button disabled={sending} className="mt-5 inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold bg-orange-500 text-white shadow hover:bg-orange-600 disabled:opacity-60 w-full sm:w-auto">{sending ? "…" : labels.submit || "Send"}</button>
-    </form>
-  );
-}
-
-// --- Main App ----------------------------------------------------------------
-export default function App() {
-  const [lang, setLang] = React.useState<string>("de");
-  const dict = getDict(lang);
-  const dir = RTL.has(lang) ? "rtl" : "ltr";
-  const align = RTL.has(lang) ? "text-right" : "text-left";
-  const groups = getFleet(lang).groups;
-  const [activeKey, setActiveKey] = React.useState<string>(groups[0].key);
-  const active = React.useMemo(() => groups.find(g => g.key === activeKey) || groups[0], [groups, activeKey]);
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-white" dir={dir} id="top">
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur bg-slate-950/70 border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-          <a href="#top" className="flex items-center gap-3 group">
-            <div className="h-8 w-8 rounded-xl bg-orange-500 grid place-items-center font-extrabold shadow group-hover:scale-105 transition">K</div>
-            <span className="tracking-wider font-extrabold text-xl group-hover:text-orange-400 transition">{dict.brand}</span>
-          </a>
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <a href="#book" className="hover:text-orange-400">{dict.nav?.book || "Book"}</a>
-            <a href="#fleet" className="hover:text-orange-400">{dict.nav?.fleet || "Fleet"}</a>
-            <a href="#how" className="hover:text-orange-400">{dict.nav?.how || "How"}</a>
-            <a href="#contact" className="hover:text-orange-400">{dict.nav?.contact || "Contact"}</a>
-            <select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-slate-800 text-white border border-white/20 rounded-lg px-2 py-1 font-semibold" aria-label="language-select">
-              {LANGS.map(l => (<option key={l.code} value={l.code}>{l.label}</option>))}
-            </select>
-          </nav>
-          {/* Mobile: language on header right */}
-          <div className="md:hidden">
-            <select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-slate-800 text-white border border-white/20 rounded-lg px-2 py-1 font-semibold min-w-[56px]">
-              {LANGS.map(l => (<option key={l.code} value={l.code}>{l.short}</option>))}
-            </select>
-          </div>
-        </div>
-        {/* Mobile quick nav */}
-        <div className="md:hidden border-t border-white/10">
-          <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-2 text-sm overflow-x-auto no-scrollbar whitespace-nowrap">
-            <a href="#book" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav?.book || "Book"}</a>
-            <a href="#fleet" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav?.fleet || "Fleet"}</a>
-            <a href="#how" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav?.how || "How"}</a>
-            <a href="#contact" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav?.contact || "Contact"}</a>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <Section id="hero" className="pt-10 md:pt-16">
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-900 to-slate-800 p-8 md:p-12">
-          <div className="absolute -top-16 -left-16 h-64 w-64 bg-orange-500/20 blur-3xl rounded-full" />
-          <div className={cls("max-w-3xl", align)}>
-            <h1 className="balance break-words hyphens-auto text-[28px] sm:text-4xl md:text-5xl font-extrabold leading-tight">{dict.tagline}</h1>
-            <p className="mt-4 text-white/80 md:text-lg">{dict.heroSub}</p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <OrangeButton href="#book">{dict.nav?.book || "Book"}</OrangeButton>
-              <GhostButton href={WA_LINK}>{dict.ctaPrimary}</GhostButton>
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      {/* Booking */}
-      <Section id="book"><BookingForm dict={dict} lang={lang} /></Section>
-
-      {/* Features */}
-      <Section>
-        <h2 className={cls("text-2xl md:text-3xl font-bold mb-8", align)}>{dict.featuresTitle}</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {dict.features.map((f: any, i: number) => (
-            <div key={i} className="rounded-2xl bg-slate-900/70 border border-white/10 p-6">
-              <div className="h-10 w-10 rounded-xl bg-orange-500/20 grid place-items-center mb-4 ring-1 ring-orange-500/30"><span className="text-orange-400 font-extrabold">{i + 1}</span></div>
-              <div className="text-lg font-semibold">{f.title}</div>
-              <div className="text-white/70 mt-1">{f.text}</div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* Fleet with group tabs */}
-      <Section id="fleet">
-        <h2 className={cls("text-2xl md:text-3xl font-bold mb-6", align)}>{getDict(lang).fleetTitle.replace('{orSimilar}', getDict(lang).orSimilar)}</h2>
-        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar">
-          {getFleet(lang).groups.map(g => (
-            <button key={g.key} onClick={() => setActiveKey(g.key)} className={cls("px-4 py-2 rounded-xl border text-sm", activeKey === g.key ? "bg-orange-500 text-white border-orange-500" : "bg-white/5 border-white/10 hover:bg-white/10")}>{g.label}</button>
-          ))}
-        </div>
-        <CategoryGrid dict={{ categories: active.categories, orSimilar: getDict(lang).orSimilar, nav: getDict(lang).nav }} lang={lang} />
-        <p className="mt-6 text-xs text-white/40">Bilder: Unsplash (freie Nutzung) – Beispielmodelle („{getDict(lang).orSimilar}“). Keine Preise oder Kilometerangaben. Extras auf Anfrage.</p>
-      </Section>
-
-      {/* How it works */}
-      <Section id="how">
-        <h2 className={cls("text-2xl md:text-3xl font-bold mb-8", align)}>{dict.howTitle}</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {getDict(lang).steps.map((s: any, i: number) => (
-            <div key={i} className="rounded-2xl bg-slate-900/70 border border-white/10 p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="h-9 w-9 rounded-lg bg-orange-500 text-white grid place-items-center font-bold">{i + 1}</div>
-                <div className="text-lg font-semibold">{s.title}</div>
+        if(submitted){
+          return (
+            <div className="rounded-3xl bg-slate-900/70 border border-white/10 p-8 text-center mb-24">
+              <h3 className="text-2xl font-bold mb-2">{dict.thankTitle}</h3>
+              <p className="text-white/70 mb-6">{dict.thankDesc}</p>
+              <div className="flex items-center justify-center gap-3">
+                <a href={WA_LINK} className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold bg-green-500 text-white shadow hover:bg-green-600 transition">WhatsApp</a>
+                <a href="#fleet" className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold border border-white/30 text-white hover:bg-white/10 transition">{dict.ctaSecondary}</a>
               </div>
-              <div className="text-white/70">{s.text}</div>
             </div>
-          ))}
-        </div>
-      </Section>
+          );
+        }
 
-      {/* Contact */}
-      <Section id="contact">
-        <div className="rounded-3xl bg-gradient-to-b from-slate-900 to-slate-800 border border-white/10 p-8 md:p-12 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold">{dict.contactTitle}</h2>
-          <p className="mt-2 text-white/70">{WA_NUMBER}</p>
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <OrangeButton href={WA_LINK}>WhatsApp</OrangeButton>
-            <a className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold border border-white/20 hover:bg-white/10" href="tel:+905537115022">Call</a>
+        const labelCls = "text-sm text-white/70 mb-1";
+        const boxCls = "bg-slate-800/70 border border-white/10 rounded-xl px-4 py-3 text-[16px] w-full";
+
+        return (
+          <form onSubmit={onSubmit} className="rounded-3xl bg-slate-900/70 border border-white/10 p-6 md:p-8 mb-24">
+            <h3 className="text-xl md:text-2xl font-bold mb-1">{dict.nav.book}</h3>
+            <p className="text-white/70 mb-6">{dict.heroSub}</p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div><div className={labelCls}>{labels.name}</div><input required className={boxCls} placeholder={labels.name} autoComplete="name" value={form.name} onChange={on('name')} /></div>
+              <div><div className={labelCls}>{labels.phone}</div><input required className={boxCls} type="tel" inputMode="tel" autoComplete="tel" placeholder={labels.phone} value={form.phone} onChange={on('phone')} /></div>
+              <div><div className={labelCls}>{labels.pickup}</div><input required className={boxCls} placeholder={labels.pickup} value={form.pickup} onChange={on('pickup')} /></div>
+              <div><div className={labelCls}>{labels.dropoff}</div><input required className={boxCls} placeholder={labels.dropoff} value={form.dropoff} onChange={on('dropoff')} /></div>
+              <div><div className={labelCls}>{labels.pickDate}</div><input required type="date" className={boxCls} value={form.pickDate} onChange={on('pickDate')} /></div>
+              <div><div className={labelCls}>{labels.pickTime}</div><input required type="time" className={boxCls} value={form.pickTime} onChange={on('pickTime')} /></div>
+              <div><div className={labelCls}>{labels.dropDate}</div><input required type="date" className={boxCls} min={form.pickDate||''} value={form.dropDate} onChange={on('dropDate')} /></div>
+              <div><div className={labelCls}>{labels.dropTime}</div><input required type="time" className={boxCls} min={sameDay? (form.pickTime||'') : ''} value={form.dropTime} onChange={on('dropTime')} /></div>
+              <div className="md:col-span-2"><div className={labelCls}>{labels.category}</div>
+                <select required className={boxCls} value={form.category} onChange={on('category')}>
+                  <option value="">—</option>
+                  {FLEET_GROUPS.flatMap(g=>CODES[g]).map(([code])=>{
+                    const name=(CAT[lang]&&CAT[lang][code])||CAT.en[code]||code; return <option key={code} value={code}>{name}</option>
+                  })}
+                </select>
+              </div>
+              <div className="md:col-span-2"><div className={labelCls}>{labels.notes}</div><input className={boxCls} placeholder={labels.notes} value={form.notes} onChange={on('notes')} /></div>
+            </div>
+            <button disabled={sending} className="mt-5 inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold bg-orange-500 text-white shadow hover:bg-orange-600 disabled:opacity-60 w-full sm:w-auto">{sending? '…' : labels.submit}</button>
+          </form>
+        );
+      }
+
+      function App(){
+        const [lang,setLang] = useState('de');
+        const dict = I18N[lang];
+        const dir = RTL.has(lang)? 'rtl':'ltr';
+        const align = RTL.has(lang)? 'text-right':'text-left';
+        const [active,setActive] = useState('cars');
+
+        return (
+          <div className="min-h-screen bg-slate-950 text-white" dir={dir} id="top">
+            <header className="sticky top-0 z-50 backdrop-blur bg-slate-950/70 border-b border-white/10">
+              <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+                <a href="#top" className="flex items-center gap-3 group">
+                  <div className="h-8 w-8 rounded-xl bg-orange-500 grid place-items-center font-extrabold shadow group-hover:scale-105 transition">K</div>
+                  <span className="tracking-wider font-extrabold text-xl group-hover:text-orange-400 transition">{dict.brand}</span>
+                </a>
+                <nav className="hidden md:flex items-center gap-6 text-sm">
+                  <a href="#book" className="hover:text-orange-400">{dict.nav.book}</a>
+                  <a href="#fleet" className="hover:text-orange-400">{dict.nav.fleet}</a>
+                  <a href="#how" className="hover:text-orange-400">{dict.nav.how}</a>
+                  <a href="#contact" className="hover:text-orange-400">{dict.nav.contact}</a>
+                  <select value={lang} onChange={(e)=>setLang(e.target.value)} className="bg-slate-800 text-white border border-white/20 rounded-lg px-2 py-1 font-semibold" aria-label="language-select">
+                    {LANGS.map(l=>(<option key={l.code} value={l.code}>{l.label}</option>))}
+                  </select>
+                </nav>
+                <div className="md:hidden">
+                  <select value={lang} onChange={(e)=>setLang(e.target.value)} className="bg-slate-800 text-white border border-white/20 rounded-lg px-2 py-1 font-semibold min-w-[56px]">
+                    {LANGS.map(l=>(<option key={l.code} value={l.code}>{l.short}</option>))}
+                  </select>
+                </div>
+              </div>
+              <div className="md:hidden border-t border-white/10">
+                <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-2 text-sm overflow-x-auto no-scrollbar whitespace-nowrap">
+                  <a href="#book" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav.book}</a>
+                  <a href="#fleet" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav.fleet}</a>
+                  <a href="#how" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav.how}</a>
+                  <a href="#contact" className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10">{dict.nav.contact}</a>
+                </div>
+              </div>
+            </header>
+
+            <section id="hero" className="py-14 md:py-20">
+              <div className="max-w-6xl mx-auto px-4 md:px-6">
+                <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-900 to-slate-800 p-8 md:p-12">
+                  <div className="absolute -top-16 -left-16 h-64 w-64 bg-orange-500/20 blur-3xl rounded-full" />
+                  <div className={cls("max-w-3xl", align)}>
+                    <h1 className="balance break-words hyphens-auto text-[28px] sm:text-4xl md:text-5xl font-extrabold leading-tight">{dict.tagline}</h1>
+                    <p className="mt-4 text-white/80 md:text-lg">{dict.heroSub}</p>
+                    <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                      <a href="#book" className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold bg-orange-500 text-white shadow hover:bg-orange-600 transition">{dict.nav.book}</a>
+                      <a href={WA_LINK} className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold border border-white/30 text-white hover:bg-white/10 transition">{dict.ctaPrimary}</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section id="book" className="py-14 md:py-20"><div className="max-w-6xl mx-auto px-4 md:px-6"><BookingForm lang={lang}/></div></section>
+
+            <section id="features" className="py-14 md:py-20"><div className="max-w-6xl mx-auto px-4 md:px-6">
+              <h2 className={cls("text-2xl md:text-3xl font-bold mb-8", align)}>{dict.featuresTitle}</h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                {dict.features.map((f,i)=> (
+                  <div key={i} className="rounded-2xl bg-slate-900/70 border border-white/10 p-6">
+                    <div className="h-10 w-10 rounded-xl bg-orange-500/20 grid place-items-center mb-4 ring-1 ring-orange-500/30"><span className="text-orange-400 font-extrabold">{i+1}</span></div>
+                    <div className="text-lg font-semibold">{f.t}</div>
+                    <div className="text-white/70 mt-1">{f.d}</div>
+                  </div>
+                ))}
+              </div>
+            </div></section>
+
+            <section id="fleet" className="py-14 md:py-20"><div className="max-w-6xl mx-auto px-4 md:px-6">
+              <h2 className={cls("text-2xl md:text-3xl font-bold mb-6", align)}>{I18N[lang].fleetTitle.replace('{orSimilar}', I18N[lang].orSimilar)}</h2>
+              <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar">
+                {FLEET_GROUPS.map(k => (
+                  <button key={k} onClick={()=>setActive(k)} className={cls("px-4 py-2 rounded-xl border text-sm", active===k? "bg-orange-500 text-white border-orange-500" : "bg-white/5 border-white/10 hover:bg-white/10")}>{I18N[lang].groups[k]}</button>
+                ))}
+              </div>
+              <CategoryGrid lang={lang} groupKey={active}/>
+              <p className="mt-6 text-xs text-white/40">Bilder: Unsplash (freie Nutzung) – Beispielmodelle („{I18N[lang].orSimilar}“). Keine Preise/Kilometerangaben. Extras auf Anfrage.</p>
+            </div></section>
+
+            <section id="how" className="py-14 md:py-20"><div className="max-w-6xl mx-auto px-4 md:px-6">
+              <h2 className={cls("text-2xl md:text-3xl font-bold mb-8", align)}>{dict.howTitle}</h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                {dict.steps.map((s,i)=> (
+                  <div key={i} className="rounded-2xl bg-slate-900/70 border border-white/10 p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="h-9 w-9 rounded-lg bg-orange-500 text-white grid place-items-center font-bold">{i+1}</div>
+                      <div className="text-lg font-semibold">{s.t}</div>
+                    </div>
+                    <div className="text-white/70">{s.d}</div>
+                  </div>
+                ))}
+              </div>
+            </div></section>
+
+            <section id="contact" className="py-14 md:py-20"><div className="max-w-6xl mx-auto px-4 md:px-6">
+              <div className="rounded-3xl bg-gradient-to-b from-slate-900 to-slate-800 border border-white/10 p-8 md:p-12 text-center">
+                <h2 className="text-2xl md:text-3xl font-bold">{dict.contactTitle}</h2>
+                <p className="mt-2 text-white/70">{WA_NUMBER}</p>
+                <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                  <a href={WA_LINK} className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold bg-green-500 text-white shadow hover:bg-green-600 transition">WhatsApp</a>
+                  <a className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold border border-white/20 hover:bg-white/10" href="tel:+905537115022">Call</a>
+                </div>
+              </div>
+            </div></section>
+
+            <section id="legal" className="py-14 md:py-20"><div className="max-w-6xl mx-auto px-4 md:px-6">
+              <details className="group rounded-2xl bg-slate-900/50 border border-white/10 p-5">
+                <summary className="cursor-pointer text-white/70 hover:text-white flex items-center justify-between">
+                  <span>{dict.legalHead}</span>
+                  <span className="text-white/40 group-open:rotate-180 transition">▾</span>
+                </summary>
+                <div className={cls("mt-4", align)}>
+                  <ul className="space-y-2 text-white/80 list-disc ps-5">
+                    {dict.legalLines.map((li,i)=>(<li key={i}>{li}</li>))}
+                  </ul>
+                  <p className="mt-4 text-xs text-white/50">{lang==='de'? 'Konditionen variieren je nach Anbieter/Station. Details im Angebot/Voucher.' : lang==='tr'? 'Koşullar sağlayıcı/istasyona göre değişir. Detaylar teklifte/voucher’da.' : lang==='ar'? 'الشروط تختلف حسب المورّد/الفرع. التفاصيل في العرض/القسيمة.' : lang==='he'? 'התנאים משתנים לפי ספק/סניף. פרטים בהצעה/שובר.' : lang==='es'? 'Condiciones variables según proveedor/sucursal. Detalles en la oferta/voucher.' : lang==='fr'? 'Conditions variables selon le fournisseur/agence. Détails dans le devis/voucher.' : lang==='it'? 'Condizioni variabili per fornitore/filiale. Dettagli nel preventivo/voucher.' : lang==='pt'? 'Condições variáveis por fornecedor/loja. Detalhes no orçamento/voucher.' : lang==='nl'? 'Voorwaarden verschillen per leverancier/vestiging. Details in offerte/voucher.' : lang==='pl'? 'Warunki różnią się wg dostawcy/oddziału. Szczegóły w ofercie/voucherze.' : lang==='el'? 'Οι όροι διαφέρουν ανά πάροχο/υποκατάστημα. Λεπτομέρειες στην προσφορά/voucher.' : lang==='ru'? 'Условия зависят от поставщика/филиала. Подробности в оферте/ваучере.' : 'Conditions vary by supplier/station. Details in your quote/voucher.'}</p>
+                </div>
+              </details>
+
+              <div className="mt-6 rounded-2xl bg-slate-900/60 border border-white/10 p-5">
+                <div className="text-lg font-semibold mb-2">{lang==='de'? 'Impressum (Platzhalter)' : lang==='tr'? 'Künye (placeholder)' : lang==='ar'? 'بيانات الناشر (مؤقت)' : lang==='he'? 'פרטי חברה (זמני)' : lang==='es'? 'Aviso legal (provisional)' : lang==='fr'? 'Mentions légales (provisoire)' : lang==='it'? 'Informazioni legali (provvisorie)' : lang==='pt'? 'Impressum (provisório)' : lang==='nl'? 'Impressum (tijdelijk)' : lang==='pl'? 'Dane firmy (tymczasowe)' : lang==='el'? 'Νομικές πληροφορίες (προσωρινές)' : lang==='ru'? 'Реквизиты (временно)' : 'Imprint (placeholder)'}</div>
+                <p className="text-white/70 text-sm">{lang==='de'? 'Bitte Firmenangaben hier ergänzen (Rechtsform, Anschrift, Vertretung, Kontakt, USt‑ID).' : lang==='tr'? 'Lütfen şirket bilgilerini ekleyin (tüzel unvan, adres, yetkili, iletişim, vergi no).' : lang==='ar'? 'يرجى إضافة بيانات الشركة هنا (الكيان القانوني، العنوان، الممثل، وسائل الاتصال، رقم الضريبة).' : lang==='he'? 'נא להוסיף כאן פרטי חברה (ישות משפטית, כתובת, נציג, פרטי קשר, מע"מ).' : lang==='es'? 'Añada aquí los datos de la empresa (entidad legal, dirección, representante, contacto, IVA).' : lang==='fr'? 'Ajoutez ici les informations de l’entreprise (forme, adresse, représentant, contact, TVA).' : lang==='it'? 'Aggiungere qui i dati aziendali (ragione sociale, indirizzo, rappresentante, contatti, P. IVA).' : lang==='pt'? 'Adicionar aqui os dados da empresa (entidade, morada, representante, contacto, NIF).' : lang==='nl'? 'Vul hier bedrijfsgegevens in (rechtsvorm, adres, vertegenwoordiger, contact, btw‑nr.).' : lang==='pl'? 'Dodaj dane firmy (forma prawna, adres, przedstawiciel, kontakt, NIP).' : lang==='el'? 'Προσθέστε στοιχεία εταιρείας (νομική μορφή, διεύθυνση, εκπρόσωπος, επαφή, ΑΦΜ).' : lang==='ru'? 'Добавьте реквизиты (юр.лицо, адрес, представитель, контакты, НДС).' : 'Please add company details here.'}</p>
+              </div>
+            </div></section>
+
+            <footer className="py-10 text-center text-white/60"><div className="max-w-6xl mx-auto px-4 md:px-6">{dict.footer}</div></footer>
+
+            <a href={WA_LINK} className="sm:hidden fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+16px)] z-50 inline-flex items-center gap-2 rounded-full px-4 py-3 bg-green-500 text-white font-semibold shadow-lg"><span>WhatsApp</span></a>
           </div>
-        </div>
-      </Section>
+        );
+      }
 
-      {/* Legal notes (collapsible) */}
-      <Section id="legal">
-        <details className="group rounded-2xl bg-slate-900/50 border border-white/10 p-5">
-          <summary className="cursor-pointer text-white/70 hover:text-white flex items-center justify-between">
-            <span>{lang === "de" ? "Hinweise (variieren je nach Anbieter)" : lang === "tr" ? "Notlar (sağlayıcıya göre değişir)" : lang === "ar" ? "ملاحظات (تختلف حسب المورد)" : lang === "he" ? "הערות (משתנות לפי ספק)" : "Notes (vary by supplier)"}</span>
-            <span className="text-white/40 group-open:rotate-180 transition">▾</span>
-          </summary>
-          <div className={cls("mt-4", align)}>
-            <ul className="space-y-2 text-white/80 list-disc ps-5">
-              {(function () {
-                const lines: Record<string, string[]> = {
-                  de: [
-                    "Dokumente: Original-Ausweis/Pass und gültiger Führerschein; Nicht‑EU/EWR oft nur mit Übersetzung/IDP. Zusatzfahrer müssen im Vertrag stehen.",
-                    "Zahlungsmittel: Karte im Namen des Mieters; Prepaid/Bar meist ausgeschlossen. Karte bei Abholung vorlegen.",
-                    "Kaution: per Kartenblock/Belastung; oft etwa 300 EUR, Premium teils höher — abhängig von Klasse/Schutz/Anbieter.",
-                    "Mindestalter/Führerscheinbesitz: je Klasse; Young‑Driver‑Fee möglich.",
-                    "Grenzübertritt: nur erlaubt, wenn vorab genehmigt; Gebühr möglich.",
-                    "Rückgabe außerhalb Öffnungszeiten: Key‑Drop je Station möglich; Fotos empfohlen."
-                  ],
-                  tr: [
-                    "Belgeler: Kimlik/pasaport ve geçerli ehliyet; AB/AEA dışı için çoğu zaman tercüme/uluslararası ehliyet (IDP) gerekir.",
-                    "Ödeme: Kiracı adına kart; ön ödemeli/nakit çoğunlukla kabul edilmez. Kart teslimde ibraz edilir.",
-                    "Depozito: karttan bloke/çekim; genelde ~€300, premium sınıflarda daha yüksek olabilir.",
-                    "Asgari yaş/ehliyet yılı: sınıfa göre değişir; genç sürücü ücreti uygulanabilir.",
-                    "Sınır geçişi: ön onay şarttır; ücret uygulanabilir.",
-                    "Mesai dışı iade: anahtar kutusu mümkün; fotoğraf çekmeniz önerilir."
-                  ],
-                  en: [
-                    "Documents: original ID/passport and valid licence; non‑EU often needs translation/IDP.",
-                    "Payment: card in renter’s name; prepaid/cash usually not accepted.",
-                    "Deposit: card hold/charge; often ~€300, higher for premium classes.",
-                    "Age/licence tenure: varies by class; young‑driver fees possible.",
-                    "Cross‑border: allowed only with prior approval; fee may apply.",
-                    "After‑hours return: key‑drop possible; take photos."
-                  ],
-                  ar: [
-                    "الوثائق: هوية/جواز ساري ورخصة قيادة؛ لغير الاتحاد الأوروبي قد تُطلب ترجمة/دولية.",
-                    "الدفع: بطاقة باسم المستأجر؛ غالبًا لا تُقبل المسبقة الدفع/النقد.",
-                    "الوديعة: حجز/سحب על البطاقة؛ عادةً نحو ‎€300 وقد تزيد للفئات الفاخرة.",
-                    "العمر/مدة الرخصة: تختلف حسب الفئة؛ قد تُطبق رسوم سائق شاب.",
-                    "عبور الحدود: مسموح فقط بموافقة مسبقة؛ قد تُفرض رسوم.",
-                    "إرجاع خارج الدوام: صندوق مفاتيح ممكن؛ يُنصح بالتصوير."
-                  ],
-                  he: [
-                    "מסמכים: תעודה מזהה/דרכון ורישיון נהיגה בתוקף; מחוץ לאיחוד האירופי נדרשת לעיתים תרגום/רישיון בינלאומי.",
-                    "תשלום: כרטיס על שם השוכר; כרטיסים נטענים/מזומן לרוב לא מתקבלים.",
-                    "פיקדון: חסימה/חיוב בכרטיס; לרוב כ‑€300, גבוה יותר בקטגוריות פרימיום.",
-                    "גיל/וותק רישיון: משתנה לפי קטגוריה; ייתכנו דמי נהג צעיר.",
-                    "מעבר גבולות: מותר רק באישור מראש; ייתכנו חיובים.",
-                    "החזרה מחוץ לשעות פעילות: תיבת מפתחות אפשרית; מומלץ לצלם."
-                  ]
-                };
-                return (lines[lang] || lines.en).map((li, i) => (<li key={i}>{li}</li>));
-              })()}
-            </ul>
-            <p className="mt-4 text-xs text-white/50">{
-              lang === "de" ? "Hinweis: Konditionen variieren je nach Anbieter/Station. Details im Angebot/Voucher." :
-              lang === "tr" ? "Not: Koşullar sağlayıcı/istasyona göre değişir. Detaylar teklifte/voucher’da." :
-              lang === "ar" ? "تنبيه: الشروط تختلف حسب المورّد/الفرع. التفاصيل في العرض/القسيمة." :
-              lang === "he" ? "הערה: התנאים משתנים לפי ספק/סניף. פרטים בהצעה/ואוצ'ר." :
-              "Note: Conditions vary by supplier/station. Details in your quote/voucher."
-            }</p>
-          </div>
-        </details>
+      // sanity checks
+      try{ console.assert(/^[+]?\d+$/.test(WA_NUMBER),'WA_NUMBER unexpected'); console.assert(WA_LINK.includes('wa.me/'),'WA_LINK build'); console.assert(['a','b'].join('\n').includes('\n'),'join check'); }catch(e){}
 
-        <div className="mt-6 rounded-2xl bg-slate-900/60 border border-white/10 p-5">
-          <div className="text-lg font-semibold mb-2">{
-            lang === "de" ? "Impressum (Platzhalter)" :
-            lang === "tr" ? "Künye (placeholder)" :
-            lang === "ar" ? "بيانات الناشر (مؤقت)" :
-            lang === "he" ? "פרטי חברה (זמני)" :
-            "Imprint (placeholder)"}
-          </div>
-          <p className="text-white/70 text-sm">{
-            lang === "de" ? "Bitte Firmenangaben hier ergänzen (Rechtsform, Anschrift, Vertretung, Kontakt, USt‑ID)." :
-            lang === "tr" ? "Lütfen şirket bilgilerini burada tamamlayın (tüzel unvan, adres, yetkili, iletişim, vergi no)." :
-            lang === "ar" ? "يرجى إضافة بيانات الشركة هنا (الكيان القانوني، العنوان، الممثل، وسائل الاتصال، رقم الضريبة)." :
-            lang === "he" ? "נא להוסיף כאן את פרטי החברה (ישות משפטית, כתובת, נציג, פרטי קשר, מספר מע\"מ)." :
-            "Please add company details here (legal entity, address, representative, contact, tax ID)."
-          }</p>
-        </div>
-      </Section>
-
-      <footer className="py-10 text-center text-white/60"><div className="max-w-6xl mx-auto px-4 md:px-6">{dict.footer}</div></footer>
-
-      {/* Floating WhatsApp button (mobile) */}
-      <a href={WA_LINK} className="sm:hidden fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+16px)] z-50 inline-flex items-center gap-2 rounded-full px-4 py-3 bg-green-500 text-white font-semibold shadow-lg">
-        <span>WhatsApp</span>
-      </a>
-    </div>
-  );
-}
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App/>);
+    </script>
+  </body>
+</html>
